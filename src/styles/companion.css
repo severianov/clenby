@@ -1,0 +1,4885 @@
+/*
+ * ALL companion-surface CSS. Classes only; colors, fonts
+ * and borders come EXCLUSIVELY from var(--cc-*) — the theme compiler emits
+ * those per-mode, so switching to Book instantly re-skins every companion
+ * surface with zero per-theme patches.
+ *
+ * Inline styles on companion elements are geometry-only (ui/root.setGeometry).
+ * z-index values mirror core/zindex.ts (band 30–45; claude's modals at z-50
+ * always win) — keep the two in sync.
+ *
+ * Injected as <style id="cc-companion"> by the content script.
+ */
+
+html {
+  /* Fallback tokens so companion UI is styled even before the theme feature
+   * runs (compile.ts overrides these per-mode). Declared on `html` — NOT on
+   * #cc-root — for two reasons: (1) companion surfaces that live inside
+   * claude's DOM (status bar, composer icon group) inherit them; (2) the
+   * theme compiler emits real values on html[data-mode=…], which beats this
+   * bare `html` rule by specificity. A direct declaration on #cc-root would
+   * mask the inherited theme values for every #cc-root descendant. */
+  --cc-bg: hsl(240 4% 8%);
+  --cc-surface: hsl(240 4% 12%);
+  --cc-surface-raised: hsl(240 4% 16%);
+  --cc-surface-raised-2: hsl(240 4% 20%);
+  --cc-bar-bg: hsl(240 5% 8% / 0.93);
+  --cc-text: hsl(60 5% 87%);
+  --cc-text-muted: hsl(0 0% 67%);
+  --cc-text-faint: hsl(0 0% 47%);
+  --cc-border: hsl(0 0% 100% / 0.14);
+  --cc-accent: hsl(15 63% 60%);
+  --cc-danger: hsl(0 72% 62%);
+  --cc-gold: hsl(46 74% 66%);
+  /* Success green — #7c9a67 (idle ●, copy-success, done todos). */
+  --cc-ok: hsl(95 20% 50%);
+  --cc-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+  /* Font stacks — static (not per-preset data): the companion's signature is
+   * sans prose with MONOSPACE metadata/markdown syntax, on every theme. */
+  --cc-mono: "Cascadia Code", "SF Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  --cc-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#cc-root {
+  font: 12.5px/1.4 system-ui, -apple-system, sans-serif;
+  color: var(--cc-text);
+}
+
+.cc-hidden {
+  display: none !important;
+}
+
+/* ---- shared primitives ---------------------------------------------------- */
+
+.cc-panel {
+  position: fixed;
+  z-index: 40; /* Z.panel */
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  box-shadow: var(--cc-shadow);
+}
+
+.cc-popover {
+  position: fixed;
+  z-index: 42; /* Z.popover */
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  border: 1px solid var(--cc-border);
+  border-radius: 10px;
+  box-shadow: var(--cc-shadow);
+  padding: 10px;
+}
+
+.cc-chip {
+  position: fixed;
+  z-index: 44; /* Z.chip */
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.cc-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  font: inherit;
+  outline: none;
+}
+.cc-input:focus {
+  border-color: var(--cc-accent);
+}
+
+.cc-btn {
+  border: 1px solid var(--cc-border);
+  background: transparent;
+  color: var(--cc-text);
+  border-radius: 7px;
+  padding: 4px 9px;
+  font: inherit;
+  cursor: pointer;
+}
+.cc-btn:hover {
+  background: var(--cc-surface-raised);
+}
+
+.cc-muted {
+  color: var(--cc-text-muted);
+}
+.cc-faint {
+  color: var(--cc-text-faint);
+}
+.cc-danger-text {
+  color: var(--cc-danger);
+}
+
+/* ---- status bar ------------------------------------------------------------ */
+
+/* Floating pill ABOVE the composer (fixed-position
+ * float — NOT in-flow inside the composer container). Geometry (left/top/
+ * width) is re-tracked every tick by the feature via setGeometry; the pill's
+ * own elevated surface (--cc-bar-bg) keeps it clearly visible on every theme. */
+#cc-status {
+  position: fixed;
+  z-index: 36; /* Z.statusBar */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  box-sizing: border-box;
+  padding: 7px 14px 6px;
+  font-family: var(--cc-mono, monospace);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--cc-text-muted);
+  background: var(--cc-bar-bg, var(--cc-surface-raised));
+  border: 1px solid var(--cc-border);
+  border-radius: 9px;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  overflow: hidden;
+}
+#cc-status .cc-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+#cc-status .cc-status-row2 {
+  font-size: 11px;
+}
+#cc-status .cc-status-row3 {
+  font-size: 10.5px;
+}
+#cc-status .cc-status-seg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.cc-accent-text {
+  color: var(--cc-accent);
+}
+#cc-l3 {
+  cursor: pointer;
+  opacity: 0.55;
+}
+#cc-l3:hover {
+  opacity: 1;
+}
+
+/* Sponsor slot (line 3 right — the split-flap "departure board"). */
+.cc-ad {
+  flex: none;
+  border: 1px dashed var(--cc-text-faint);
+  border-radius: 5px;
+  padding: 1px 9px;
+  opacity: 0.9;
+  cursor: pointer;
+  transition:
+    opacity 0.25s ease,
+    background-color 0.25s ease,
+    border-color 0.25s ease;
+}
+.cc-ad:hover {
+  opacity: 1;
+  background-color: var(--cc-surface-raised);
+  border-color: var(--cc-text-faint);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-ad {
+    transition: none;
+  }
+}
+
+/* Make room for the bar above the composer (−86px clears the 3-line bar;
+ * −48px left the arrow overlapping it). */
+html.cc-has-status button[aria-label="Scroll to bottom"] {
+  transform: translateY(-86px) !important;
+}
+
+/* ---- header cluster + popovers --------------------------------------------- */
+
+#cc-cluster {
+  position: fixed;
+  z-index: 38; /* Z.headerCluster */
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.cc-iconbtn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+.cc-iconbtn:hover,
+.cc-iconbtn[data-open="1"] {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+}
+
+.cc-pop {
+  width: 300px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 12px;
+}
+#cc-pop-notes {
+  width: 340px;
+}
+/* Gear menu (2026-07 redesign) — three visually distinct ZONE cards
+ * (Appearance / Actions / Toggles), each opened by a mono eyebrow label.
+ * No title bar, no close button: the popover dismisses via the gear button
+ * or an outside click (header-cluster owns that behavior). */
+.cc-gear-zone {
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  padding: 10px;
+  background: color-mix(in oklab, var(--cc-text) 2.5%, transparent);
+}
+.cc-gear-zone + .cc-gear-zone {
+  margin-top: 10px;
+}
+/* Zone eyebrow — mono uppercase (redesign: metadata is monospace). */
+.cc-menu-label {
+  font: 600 10px var(--cc-mono, monospace);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+  margin: 0 2px 8px;
+}
+/* Sub-eyebrow inside a zone (Text size / Export / toggle groups). */
+.cc-gear-sub {
+  font: 600 9px var(--cc-mono, monospace);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+  opacity: 0.8;
+  margin: 10px 2px 5px;
+}
+
+/* Theme picker — card grid: "Aa" identity tile,
+ * name in sans, active card ringed in accent with a ✓. */
+.cc-theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.cc-theme-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    background-color 0.13s,
+    border-color 0.13s;
+}
+.cc-theme-card:hover {
+  background: var(--cc-surface-raised-2);
+}
+.cc-theme-card[data-active="1"] {
+  border-color: var(--cc-accent);
+  background: color-mix(in srgb, var(--cc-accent) 16%, transparent);
+}
+.cc-theme-sw {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 12px var(--cc-sans, sans-serif);
+  border: 1px solid var(--cc-border);
+  /* --cc-swatch / --cc-swatch-fg are preset-identity data set per card by the
+   * picker (curated in each preset's JSON — not themable tokens). */
+  background: var(--cc-swatch, var(--cc-surface-raised));
+  color: var(--cc-swatch-fg, var(--cc-text));
+}
+.cc-theme-sw.cc-sw-serif {
+  font-family: Georgia, "Times New Roman", serif;
+}
+.cc-theme-sw.cc-sw-mono {
+  font-family: var(--cc-mono, monospace);
+  font-weight: 600;
+}
+.cc-theme-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.cc-theme-ck {
+  flex: none;
+  color: var(--cc-accent);
+  font-size: 12px;
+  opacity: 0;
+}
+.cc-theme-card[data-active="1"] .cc-theme-ck {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-theme-card {
+    transition: none;
+  }
+}
+
+.cc-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Text-size row buttons: raised chips, accent-line hover. */
+.cc-size-row .cc-btn {
+  min-width: 30px;
+  padding: 4px 0;
+  text-align: center;
+  background: var(--cc-surface-raised);
+}
+.cc-size-row .cc-btn:hover {
+  background: var(--cc-surface-raised);
+  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+}
+.cc-menu-row .cc-menu-value {
+  margin-left: auto;
+  color: var(--cc-text-faint);
+  font-size: 11px;
+}
+/* Text-size label between A− and A+ (min-width 44, centered
+ * monospace; reads "auto" when no size tweak is set). */
+.cc-menu-row .cc-size-val {
+  min-width: 44px;
+  text-align: center;
+  font-family: var(--cc-mono, monospace);
+  font-size: 11px;
+  color: var(--cc-text-muted);
+}
+
+/* Actions zone — Fold/Unfold SEGMENTED PAIR. */
+.cc-gear-seg {
+  display: flex;
+  border: 1px solid var(--cc-border);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--cc-surface-raised);
+}
+.cc-gear-seg-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 600 11px var(--cc-sans, sans-serif);
+  cursor: pointer;
+  transition:
+    background-color 0.13s,
+    color 0.13s;
+}
+.cc-gear-seg-btn + .cc-gear-seg-btn {
+  border-left: 1px solid var(--cc-border);
+}
+.cc-gear-seg-btn:hover {
+  background: var(--cc-surface-raised-2);
+  color: var(--cc-text);
+}
+/* Mode segment under the Off preset: Off is stock claude.ai and follows the
+ * page, so the light/dark choice is inert — show it, but visibly dead. */
+.cc-gear-seg-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--cc-text-muted);
+}
+.cc-gear-seg-btn:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: -2px;
+}
+/* Mode segment (Appearance zone): the checked radio gets the same accent
+ * treatment as the active theme card. Only the mode segment's buttons carry
+ * role="radio"/aria-checked — the Fold/Unfold pair never matches. */
+.cc-gear-seg-btn[aria-checked="true"] {
+  background: color-mix(in srgb, var(--cc-accent) 16%, transparent);
+  color: var(--cc-text);
+  box-shadow: inset 0 0 0 1px var(--cc-accent);
+}
+
+/* Actions zone — ICON-TILE launcher grid (icon over label). */
+.cc-gear-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin-top: 8px;
+}
+.cc-gear-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 4px 8px;
+  border: 1px solid var(--cc-border);
+  border-radius: 10px;
+  background: var(--cc-surface-raised);
+  color: var(--cc-text-muted);
+  font: 10.5px var(--cc-sans, sans-serif);
+  cursor: pointer;
+  transition:
+    background-color 0.13s,
+    border-color 0.13s,
+    color 0.13s;
+}
+.cc-gear-tile:hover {
+  background: var(--cc-surface-raised-2);
+  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+  color: var(--cc-text);
+}
+.cc-gear-tile:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-gear-tile svg {
+  color: var(--cc-accent);
+}
+
+/* Actions zone — Selector-health status row (live degraded count right). */
+.cc-gear-health {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--cc-border);
+  border-radius: 10px;
+  background: var(--cc-surface-raised);
+  color: var(--cc-text-muted);
+  font: 11px var(--cc-sans, sans-serif);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 0.13s,
+    border-color 0.13s;
+}
+.cc-gear-health:hover {
+  background: var(--cc-surface-raised-2);
+  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+}
+.cc-gear-health:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-gear-health svg {
+  color: var(--cc-ok);
+}
+.cc-gear-health-name {
+  color: var(--cc-text);
+  font-weight: 600;
+}
+.cc-gear-health-count {
+  margin-left: auto;
+  font: 10px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+}
+
+/* Toggles zone — switch rows: name + one-line desc left, track right.
+ * The whole row is the role="switch" button; aria-checked paints it. */
+.cc-gear-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--cc-text);
+  transition: background-color 0.13s;
+}
+.cc-gear-toggle:hover {
+  background: var(--cc-surface-raised);
+}
+.cc-gear-toggle:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: -2px;
+}
+.cc-gear-tg-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cc-gear-tg-name {
+  font-size: 12px;
+  color: var(--cc-text);
+}
+.cc-gear-tg-desc {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--cc-text-faint);
+}
+/* The switch — pill track + sliding knob, tokens only. */
+.cc-gear-sw-track {
+  flex: none;
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  background: var(--cc-surface-raised-2);
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+.cc-gear-sw-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--cc-text-faint);
+  transition:
+    left 0.15s,
+    background-color 0.15s;
+}
+.cc-gear-toggle[aria-checked="true"] .cc-gear-sw-track {
+  background: var(--cc-accent);
+  border-color: var(--cc-accent);
+}
+.cc-gear-toggle[aria-checked="true"] .cc-gear-sw-track::after {
+  left: 14px;
+  background: var(--cc-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-gear-seg-btn,
+  .cc-gear-tile,
+  .cc-gear-health,
+  .cc-gear-toggle,
+  .cc-gear-sw-track,
+  .cc-gear-sw-track::after {
+    transition: none;
+  }
+}
+
+/* Composer-inline icon group (usage gauge + undo-send timer mount points). */
+#cc-composer-grp {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+#cc-composer-grp .cc-composer-slot {
+  display: flex;
+  align-items: center;
+}
+
+/* ---- per-message decorations (owned by core/decorations) ------------------ */
+
+.cc-gutter {
+  position: absolute;
+  left: -31px;
+  top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 30; /* Z.gutter */
+}
+
+/* Rail order is CSS-pinned via flex order so it is stable regardless of
+ * which feature's sweep reaches a new message first: fold on top, then the
+ * mini-window pop-out (order 2, set in its own section below). */
+.cc-gutter > .cc-slot[data-cc-owner="folding"] {
+  order: 0;
+}
+
+.cc-meta-area {
+  /* THEME-INDEPENDENT font: the
+   * stamp must never inherit a theme's serif/mono/italic — themes style
+   * `.font-claude-response` descendants with !important, so match that. */
+  text-align: right;
+  font: 11.5px/1.3 system-ui, -apple-system, sans-serif !important;
+  font-style: normal !important;
+  font-weight: 400 !important;
+  color: var(--cc-text-muted);
+  opacity: 0.75;
+  margin-top: 8px;
+  letter-spacing: 0.02em;
+  z-index: 31; /* Z.meta */
+}
+
+/* Thread-only guard: message-like markup also renders in the artifact /
+ * document viewer and must NEVER show companion controls. */
+.cc-gutter:not([data-test-render-count] *),
+.cc-meta-area:not([data-test-render-count] *),
+.cc-foldhead:not([data-test-render-count] *) {
+  display: none !important;
+}
+
+/* ---- folding v3 (structural collapse — NOT maxHeight) --------------------- */
+
+/* The gutter is exempt so the −/+ box stays reachable while folded (the
+ * fold button lives in the decorations gutter). */
+.cc-collapsed > *:not(.cc-foldhead):not(.cc-gutter) {
+  display: none !important;
+}
+.cc-collapsed {
+  min-height: 0 !important;
+}
+.cc-foldhead {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  min-height: 24px;
+  font-style: normal;
+  /* --cc-fold-* are computed-value bridges set per-head by the folding
+   * feature so the head matches the MESSAGE font in every theme (the fixed
+   * theme-independent font-size bug). Data, not styling — no literals. */
+  font-size: var(--cc-fold-fs, inherit);
+  font-family: var(--cc-fold-ff, inherit);
+  /* Color must be bridged too (computed, never literal):
+   * themes set answer color via !important DESCENDANT selectors
+   * (.font-claude-response :is(p,li,…)) which the head — a direct child —
+   * never matches, so `inherit` alone gives the wrong color there. */
+  color: var(--cc-fold-color, inherit);
+}
+.cc-foldhead .cc-t {
+  font-size: inherit;
+  font-family: inherit;
+}
+.cc-foldhead .cc-t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
+  opacity: 0.9;
+}
+.cc-foldhead .cc-ell {
+  flex: none;
+  border: 1px solid var(--cc-border);
+  border-radius: 4px;
+  padding: 0 7px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--cc-text-muted);
+  background: var(--cc-surface-raised);
+}
+.cc-foldbtn {
+  width: 21px;
+  height: 21px;
+  border: 1px solid var(--cc-border);
+  border-radius: 5px;
+  background: var(--cc-surface);
+  color: var(--cc-text-muted);
+  font: 14px/19px monospace;
+  padding: 0;
+  text-align: center;
+  cursor: pointer;
+}
+.cc-foldbtn:hover {
+  color: var(--cc-text);
+  border-color: var(--cc-text-faint);
+}
+
+/* ---- highlights ------------------------------------------------------------ */
+
+mark.cc-hl {
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--cc-gold) 38%, transparent),
+    color-mix(in srgb, var(--cc-gold) 38%, transparent)
+  ) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100%;
+  background-position: 0 50%;
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: pointer;
+  color: inherit !important;
+}
+
+/* Selection chip (🖍 Highlight / ✕ Unhighlight) — extends .cc-chip. */
+.cc-hlchip {
+  display: none;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font: 12px system-ui, -apple-system, sans-serif;
+  box-shadow: var(--cc-shadow);
+}
+.cc-hlchip.cc-on {
+  display: block;
+}
+
+/* Hover-✕ on a mark. */
+.cc-hlx {
+  position: fixed;
+  display: none;
+  z-index: 44; /* Z.chip */
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface-raised);
+  color: var(--cc-text-muted);
+  font: 11px/16px system-ui, -apple-system, sans-serif;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: var(--cc-shadow);
+}
+.cc-hlx.cc-on {
+  display: block;
+}
+.cc-hlx:hover {
+  color: var(--cc-text);
+  border-color: var(--cc-text-faint);
+}
+
+/* Pen-sweep: background-size wipe on create, retract on remove. The feature
+ * staggers multiple marks via inline animation-delay (timing-only). */
+@keyframes ccHlSweepIn {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+@keyframes ccHlSweepOut {
+  from {
+    background-size: 100% 100%;
+  }
+  to {
+    background-size: 0% 100%;
+  }
+}
+mark.cc-hl.cc-hl-in {
+  animation: ccHlSweepIn 0.3s ease both;
+}
+mark.cc-hl.cc-hl-out {
+  animation: ccHlSweepOut 0.25s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  mark.cc-hl.cc-hl-in,
+  mark.cc-hl.cc-hl-out {
+    animation: none;
+  }
+}
+
+@keyframes ccFlash {
+  0% {
+    outline: 2px solid var(--cc-gold);
+    outline-offset: 3px;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 3px;
+  }
+}
+.cc-flash {
+  animation: ccFlash 1.6s ease-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-flash {
+    animation: none;
+    outline: 2px solid var(--cc-gold);
+    outline-offset: 3px;
+  }
+}
+
+/* ---- outline panel (feature: outline) -------------------------------------- */
+
+/* Layout on top of the .cc-panel primitive. Row order:
+ * header → tabs → search row → list (search sits BELOW the tabs). */
+.cc-outline {
+  width: 280px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cc-outline-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 6px;
+  font-weight: 600;
+  color: var(--cc-text);
+  cursor: move;
+  user-select: none;
+  flex: none;
+}
+.cc-grip {
+  opacity: 0.45;
+  font-size: 12px;
+}
+.cc-outline-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-reindex {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 6px;
+}
+.cc-reindex:hover {
+  color: var(--cc-text);
+  background: var(--cc-surface-raised);
+}
+
+.cc-tabbar {
+  display: flex;
+  border-top: 1px solid var(--cc-border);
+  flex: none;
+}
+.cc-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--cc-text-muted);
+  border-bottom: 2px solid transparent;
+  user-select: none;
+}
+.cc-tab:hover {
+  color: var(--cc-text);
+}
+.cc-tab[data-active="1"] {
+  color: var(--cc-text);
+  border-bottom-color: var(--cc-accent);
+  font-weight: 600;
+}
+
+.cc-search-row {
+  padding: 8px 10px 6px;
+  flex: none;
+}
+
+.cc-list {
+  overflow-y: auto;
+  padding: 8px;
+  flex: 1;
+}
+
+.cc-item {
+  padding: 5px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  line-height: 1.35;
+  color: var(--cc-text);
+}
+.cc-item:hover {
+  background: var(--cc-surface-raised);
+}
+.cc-item .cc-num {
+  opacity: 0.8;
+  font-weight: 600;
+}
+.cc-item-gold {
+  color: var(--cc-gold);
+}
+/* Heading sub-items: indent = 8 + (lvl − 1) × 9 px. */
+.cc-item-sub {
+  color: var(--cc-text-muted);
+}
+.cc-item-sub[data-lvl="1"] {
+  margin-left: 8px;
+}
+.cc-item-sub[data-lvl="2"] {
+  margin-left: 17px;
+}
+.cc-item-sub[data-lvl="3"] {
+  margin-left: 26px;
+}
+
+.cc-group {
+  padding: 6px 8px 2px;
+  color: var(--cc-text-faint);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cc-hits {
+  padding: 2px 8px 6px;
+  color: var(--cc-text-faint);
+  font-size: 11.5px;
+}
+
+/* Scoped-search match segment inside a row. */
+mark.cc-mark {
+  background: color-mix(in srgb, var(--cc-accent) 45%, transparent);
+  color: var(--cc-text);
+  border-radius: 2px;
+  padding: 0;
+}
+
+/* Marks tab rows: 🖍 text (jump) + ✕ (remove). */
+.cc-hl-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: var(--cc-gold);
+  line-height: 1.35;
+}
+.cc-hl-row:hover {
+  background: var(--cc-surface-raised);
+}
+.cc-hl-row .cc-hl-text {
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cc-hl-x {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--cc-border);
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 10px/16px system-ui, -apple-system, sans-serif;
+  padding: 0;
+  cursor: pointer;
+}
+.cc-hl-x:hover {
+  color: var(--cc-text);
+  border-color: var(--cc-text-muted);
+}
+
+/* Marks export toolbar (slim: count left, line-icon buttons right). */
+.cc-hl-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 8px 6px;
+  border-bottom: 1px solid var(--cc-border);
+  margin-bottom: 4px;
+}
+.cc-hl-actions .cc-hl-btns {
+  display: flex;
+  gap: 2px;
+}
+/* Slimmer than the 34px header-cluster icon buttons. */
+.cc-hl-actions .cc-iconbtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+/* Copy/download success flash — GREEN (#7c9a67), not accent orange. */
+.cc-hl-actions .cc-iconbtn.cc-ok {
+  color: var(--cc-ok, hsl(95 20% 50%));
+}
+
+/* Success green shared by the idle ●, notes todos + export flashes. Every
+ * preset authors --cc-ok per mode; the fallback is #7c9a67. */
+.cc-ok-text {
+  color: var(--cc-ok, hsl(95 20% 50%));
+}
+
+/* ---- notes (feature: notes — live-markdown editor in the 📝 popover) ------
+ * Design: sans prose, MONO
+ * metadata + markdown syntax, terminal-style ▓▓░ todo meters. The notes
+ * feature owns the ONE panel header (the popover shell renders none). */
+
+/* Panel header — edge-to-edge inside the padded popover (negative margins). */
+.cc-notes-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -12px -12px 8px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+}
+.cc-notes-title {
+  flex: 1;
+  min-width: 0;
+  font: 600 13px var(--cc-sans, sans-serif);
+  letter-spacing: -0.01em;
+  color: var(--cc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-notes-scope {
+  flex: none;
+  font: 11px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+}
+.cc-notes-empty {
+  color: var(--cc-text-faint);
+  font-size: 12px;
+  padding: 4px 2px;
+}
+
+/* "+ New note" — dashed ghost row, accent on hover. */
+.cc-note-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  margin-bottom: 4px;
+  border: 1px dashed var(--cc-border);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 500 12.5px var(--cc-sans, sans-serif);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background-color 0.15s;
+}
+.cc-note-new:hover {
+  color: var(--cc-text);
+  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--cc-accent) 16%, transparent);
+}
+.cc-note-new .cc-note-new-plus {
+  font-size: 15px;
+  line-height: 1;
+  color: var(--cc-accent);
+}
+
+.cc-notes-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Note card: title (sans) over a mono meta row; thin accent left-edge when
+ * the note has OPEN todos; hover reveals the ✕. */
+.cc-note-row {
+  position: relative;
+  display: block;
+  padding: 9px 26px 8px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background-color 0.13s;
+}
+.cc-note-row:hover {
+  background: var(--cc-surface-raised);
+}
+.cc-note-row.cc-has-todo::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 9px;
+  bottom: 9px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+}
+.cc-note-row-title {
+  display: block;
+  font: 500 13px var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.cc-note-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 10.5px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+}
+/* Terminal-style block meter (▓▓▓░░ 3/5) — echoes the status bar's gauge.
+ * Done blocks in --cc-ok green; the progress tip in accent. */
+.cc-note-meter {
+  margin-left: auto;
+  letter-spacing: 1px;
+}
+.cc-note-meter .cc-meter-f {
+  color: var(--cc-ok, hsl(95 20% 50%));
+}
+.cc-note-meter .cc-meter-p {
+  color: var(--cc-accent);
+}
+.cc-note-del {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 19px;
+  height: 19px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-text-faint);
+  font: 11px/19px var(--cc-sans, sans-serif);
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.13s,
+    background-color 0.13s,
+    color 0.13s;
+}
+.cc-note-row:hover .cc-note-del,
+.cc-note-del:focus-visible {
+  opacity: 1;
+}
+.cc-note-del:hover {
+  color: var(--cc-text);
+  background: color-mix(in srgb, var(--cc-danger) 28%, transparent);
+}
+
+/* Editor header pieces: back chevron, mono todo chip, "+ todo" ghost. */
+.cc-note-back {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 7px;
+  background: var(--cc-surface-raised);
+  color: var(--cc-text-muted);
+  font: 15px/22px var(--cc-sans, sans-serif);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+.cc-note-back:hover {
+  color: var(--cc-text);
+  background: var(--cc-surface-raised-2, var(--cc-surface-raised));
+}
+.cc-note-chip {
+  flex: none;
+  font: 11px var(--cc-mono, monospace);
+  color: var(--cc-text-muted);
+  background: var(--cc-surface-raised);
+  border: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.cc-note-addtodo {
+  flex: none;
+  border: 1px solid var(--cc-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 500 11px/1.4 var(--cc-sans, sans-serif);
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.cc-note-addtodo:hover {
+  color: var(--cc-text);
+  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+}
+
+/* Live-markdown editor: sans prose, dimmed MONO markers, real checkboxes. */
+.cc-note-ed {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  font: 13px/1.62 var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+  padding: 2px 2px 0;
+  cursor: text;
+}
+.cc-note-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 2px 0;
+}
+.cc-note-text {
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  min-height: 19px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cc-note-text.cc-h {
+  font-weight: 700;
+  color: var(--cc-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.cc-note-line.cc-done .cc-note-text {
+  color: var(--cc-text-faint);
+  text-decoration: line-through;
+}
+.cc-note-cb {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  border-radius: 5px;
+  border: 1.5px solid var(--cc-border);
+  background: transparent;
+  color: var(--cc-bg);
+  font: 9px/12px var(--cc-sans, sans-serif);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+.cc-note-cb.cc-done {
+  border-color: var(--cc-ok, hsl(95 20% 50%));
+  background: var(--cc-ok, hsl(95 20% 50%));
+}
+/* Markdown markers (#, **, `) — dimmed monospace, kept as literal text. */
+.cc-md-marker {
+  color: var(--cc-text-faint);
+  font-family: var(--cc-mono, monospace);
+  font-size: 0.82em;
+  font-weight: 400;
+}
+.cc-md-b {
+  font-weight: 650;
+  color: var(--cc-text);
+}
+.cc-md-code {
+  background: var(--cc-surface-raised-2, var(--cc-surface-raised));
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--cc-mono, monospace);
+  font-size: 0.92em;
+}
+
+/* Quiet mono syntax-hint footer — edge-to-edge under the editor. */
+.cc-note-hint {
+  margin: 8px -12px -12px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+  font: 10px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+  letter-spacing: 0.01em;
+}
+.cc-note-hint .cc-hint-k {
+  color: var(--cc-text-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-note-new,
+  .cc-note-row {
+    transition: none;
+  }
+}
+
+/* ---- export (feature: export — gear-menu Export rows) --------------------- */
+
+.cc-export-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cc-export-empty {
+  color: var(--cc-text-faint);
+  font-size: 12px;
+  padding: 4px 2px;
+}
+.cc-export-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.cc-export-row:hover {
+  background: var(--cc-surface-raised);
+}
+.cc-export-ic {
+  flex: none;
+  width: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cc-text-muted);
+}
+.cc-export-row:hover .cc-export-ic {
+  color: var(--cc-text);
+}
+.cc-export-tx {
+  flex: 1;
+  min-width: 0;
+}
+.cc-export-l1 {
+  font-size: 12.5px;
+  color: var(--cc-text);
+  line-height: 1.3;
+}
+.cc-export-l2 {
+  font-size: 10.5px;
+  color: var(--cc-text-faint);
+  line-height: 1.3;
+}
+.cc-export-sub {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cc-export-sub.cc-open {
+  max-height: 70px;
+}
+.cc-export-opt {
+  padding: 5px 8px 5px 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--cc-text-muted);
+}
+.cc-export-opt:hover {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+}
+.cc-export-clip {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-export-sub,
+  .cc-export-row,
+  .cc-note-del {
+    transition: none;
+  }
+}
+
+/* ---- Tier 3 · composer-inline icon buttons (undo-send + usage) ------------- */
+/* Their slots live in #cc-composer-grp (see the composer-inline group section
+ * above), INSIDE claude's composer action row, i.e. OUTSIDE #cc-root — tokens
+ * resolve from html/:root; var() fallbacks cover nothing here because the
+ * html-level fallback block above always applies. */
+
+.cc-inline-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cc-text-muted, hsl(0 0% 62%));
+  cursor: pointer;
+  padding: 0;
+}
+.cc-inline-btn:hover,
+.cc-inline-btn.cc-open {
+  background: var(--cc-surface-raised, hsl(0 0% 50% / 0.16));
+  color: var(--cc-text, inherit);
+}
+.cc-inline-btn.cc-armed {
+  color: var(--cc-accent, hsl(15 63% 60%));
+}
+
+/* ---- console-relay ---------------------------------------------------------- */
+
+.cc-console-badge {
+  position: fixed;
+  z-index: 44; /* Z.chip — over the artifact panel, under claude's z-50 modals */
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-danger);
+  color: var(--cc-on-danger, hsl(0 0% 100%));
+  font: 12px system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  box-shadow: var(--cc-shadow);
+}
+.cc-console-badge-icon {
+  font-size: 13px;
+}
+
+/* ---- undo-send -------------------------------------------------------------- */
+
+.cc-undo-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  min-width: 96px;
+}
+.cc-undo-opt {
+  padding: 5px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cc-undo-opt:hover {
+  background: var(--cc-surface-raised);
+}
+.cc-undo-opt.cc-sel {
+  color: var(--cc-text);
+  background: color-mix(in srgb, var(--cc-accent) 30%, transparent);
+}
+.cc-undo-chip {
+  position: fixed;
+  z-index: 44; /* Z.chip */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--cc-bg);
+  border: 1px solid color-mix(in srgb, var(--cc-accent) 50%, transparent);
+  color: var(--cc-text);
+  font: 12.5px system-ui, -apple-system, sans-serif;
+  box-shadow: var(--cc-shadow);
+}
+.cc-undo-cancel {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+  cursor: pointer;
+  padding: 0;
+  font: 10px/20px system-ui, -apple-system, sans-serif;
+}
+.cc-undo-cancel:hover {
+  border-color: var(--cc-accent);
+}
+
+/* ---- usage ------------------------------------------------------------------ */
+
+.cc-usage-pop {
+  width: 300px;
+}
+.cc-usage-title {
+  font-weight: 600;
+  color: var(--cc-text);
+  margin-bottom: 8px;
+}
+.cc-usage-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cc-usage-row .cc-pct {
+  color: var(--cc-text);
+}
+.cc-usage-bar {
+  height: 7px;
+  border-radius: 99px;
+  background: var(--cc-surface-raised);
+  margin: 5px 0 3px;
+  overflow: hidden;
+}
+.cc-usage-fill {
+  height: 100%;
+  border-radius: 99px;
+}
+.cc-usage-fill.cc-sev-ok {
+  background: var(--cc-ok, hsl(95 20% 50%));
+}
+.cc-usage-fill.cc-sev-warn {
+  background: var(--cc-gold);
+}
+.cc-usage-fill.cc-sev-crit {
+  background: var(--cc-danger);
+}
+.cc-usage-reset {
+  color: var(--cc-text-muted);
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.cc-usage-spend {
+  margin-top: 4px;
+}
+.cc-usage-note {
+  color: var(--cc-text-faint);
+  font-size: 10.5px;
+  margin-top: 6px;
+}
+
+/* ---- command palette -------------------------------------------------------- */
+
+/* Theme-aware scrim: tokens only (no hardcoded colors) — dark themes dim
+ * dark, light themes dim light. */
+.cc-pal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 44; /* Z.chip band — below claude's z-50 modals */
+  background: var(--cc-bg);
+  opacity: 0.55;
+}
+
+#cc-palette {
+  position: fixed;
+  z-index: 44; /* Z.chip band — below claude's z-50 modals */
+  top: 16vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(580px, 92vw);
+  box-sizing: border-box;
+  padding: 10px;
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  box-shadow: var(--cc-shadow);
+}
+
+.cc-pal-input {
+  font-size: 14px;
+  padding: 9px 12px;
+}
+
+.cc-pal-list {
+  max-height: 48vh;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.cc-pal-group {
+  padding: 8px 8px 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+}
+
+.cc-pal-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.cc-pal-item[data-active="1"] {
+  background: var(--cc-surface-raised);
+}
+.cc-pal-item .cc-pal-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.cc-pal-item .cc-pal-hint {
+  flex: none;
+  font-size: 11px;
+  color: var(--cc-text-faint);
+}
+
+.cc-pal-empty {
+  padding: 10px 8px;
+  color: var(--cc-text-faint);
+}
+
+/* Status-bar: brighter inner definition (border + text); flat — no shadow/depth,
+ * matching the composer input box on the same plane. */
+#cc-status{ border-color: rgba(255,255,255,.30) !important; box-shadow: none !important; }
+#cc-status .cc-muted{ color: rgb(205,204,199) !important; }
+#cc-status .cc-faint{ color: rgb(153,152,146) !important; }
+/* Light-mode fix keys on the EFFECTIVE mode (html[data-cc-mode], stamped by
+ * the theme engine — respects a forced themeMode). The data-mode fallback
+ * only covers the instant before the engine's first apply / after reset. */
+html[data-cc-mode="light"] #cc-status,
+html[data-mode="light"]:not([data-cc-mode]) #cc-status{ border-color: rgba(0,0,0,.24) !important; box-shadow: none !important; }
+html[data-cc-mode="light"] #cc-status .cc-muted,
+html[data-mode="light"]:not([data-cc-mode]) #cc-status .cc-muted{ color: rgb(60,59,55) !important; }
+html[data-cc-mode="light"] #cc-status .cc-faint,
+html[data-mode="light"]:not([data-cc-mode]) #cc-status .cc-faint{ color: rgb(108,106,100) !important; }
+
+/* ---- Conversation Atlas (feature: atlas) ----------------------------------- */
+
+/* Full-viewport overlay under #cc-root. Layering inside the overlay is DOM
+ * order (stage first, chrome after) — no extra z literals beyond the band. */
+#cc-atlas {
+  position: fixed;
+  inset: 0;
+  z-index: 44; /* Z.chip band — full-screen overlay, below claude's z-50 modals */
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  outline: none;
+}
+/* Soft center vignette for depth — accent-tinted, token-derived. */
+#cc-atlas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 44%,
+    color-mix(in srgb, var(--cc-accent) 5%, transparent),
+    transparent 62%
+  );
+}
+
+/* Dot-grid stage. --cc-atlas-gs / --cc-atlas-gp are custom-property bridges
+ * written by the feature (grid scale/offset tracks the zoom — data, not
+ * styling; same pattern as --cc-fold-*). */
+.cc-atlas-stage {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--cc-text) 9%, transparent) 1px,
+    transparent 1.4px
+  );
+  background-size: var(--cc-atlas-gs, 26px) var(--cc-atlas-gs, 26px);
+  background-position: var(--cc-atlas-gp, 0 0);
+}
+.cc-atlas-stage.cc-grabbing {
+  cursor: grabbing;
+}
+.cc-atlas-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Topic hues — token mappings only. Nodes/edges/swatches carry
+ * data-cc-topic; everything colored reads --cc-atlas-c. */
+#cc-atlas [data-cc-topic="code"] {
+  --cc-atlas-c: var(--cc-accent);
+}
+#cc-atlas [data-cc-topic="design"] {
+  --cc-atlas-c: var(--cc-gold);
+}
+#cc-atlas [data-cc-topic="writing"] {
+  --cc-atlas-c: var(--cc-ok, hsl(95 20% 50%));
+}
+#cc-atlas [data-cc-topic="data"] {
+  --cc-atlas-c: var(--cc-danger);
+}
+#cc-atlas [data-cc-topic="general"] {
+  --cc-atlas-c: var(--cc-text-muted);
+}
+
+/* ---- nodes ---- */
+.cc-atlas-node {
+  cursor: pointer;
+}
+.cc-atlas-scaler {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.3, 1.15);
+}
+.cc-atlas-scaler.cc-up {
+  transform: scale(1.14);
+}
+.cc-atlas-scaler.cc-atlas-enter {
+  animation: ccAtlasPop 0.55s cubic-bezier(0.24, 0.9, 0.32, 1.25) both;
+}
+@keyframes ccAtlasPop {
+  from {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ccAtlasFadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.cc-atlas-glow {
+  fill: var(--cc-atlas-c, var(--cc-text-muted));
+  pointer-events: none;
+}
+.cc-atlas-hub .cc-atlas-glow {
+  filter: blur(14px);
+  opacity: 0.42;
+}
+.cc-atlas-child .cc-atlas-glow {
+  filter: blur(8px);
+  opacity: 0.35;
+}
+.cc-atlas-hub .cc-atlas-core {
+  fill: var(--cc-surface);
+  stroke: var(--cc-atlas-c, var(--cc-text-muted));
+  stroke-width: 2;
+}
+.cc-atlas-tint {
+  fill: var(--cc-atlas-c, var(--cc-text-muted));
+  opacity: 0.1;
+}
+.cc-atlas-child .cc-atlas-core {
+  fill: var(--cc-atlas-c, var(--cc-text-muted));
+  stroke: var(--cc-bg);
+  stroke-width: 2.5;
+}
+.cc-atlas-hole {
+  fill: var(--cc-bg);
+  opacity: 0.55;
+}
+
+/* Central conversation anchor — decorative landmark of the radial layout
+ * (no data-cc-topic: it belongs to the whole chat, so it stays neutral). */
+.cc-atlas-centernode .cc-atlas-glow {
+  fill: var(--cc-accent);
+  filter: blur(12px);
+  opacity: 0.3;
+}
+.cc-atlas-centernode .cc-atlas-core {
+  fill: var(--cc-surface);
+  stroke: var(--cc-accent);
+  stroke-width: 2;
+}
+.cc-atlas-halo {
+  fill: none;
+  stroke: color-mix(in srgb, var(--cc-text) 22%, transparent);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 6;
+}
+.cc-atlas-centernode .cc-atlas-lbl {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  fill: var(--cc-text-muted);
+}
+
+.cc-atlas-ring {
+  fill: none;
+  stroke: var(--cc-accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 7;
+  opacity: 0;
+  transition: opacity 0.22s;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.cc-atlas-node.cc-selected .cc-atlas-ring {
+  opacity: 1;
+  animation: ccAtlasSpin 16s linear infinite;
+}
+@keyframes ccAtlasSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cc-atlas-pulse {
+  fill: none;
+  stroke: var(--cc-accent);
+  stroke-width: 2;
+  animation: ccAtlasPulse 0.8s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ccAtlasPulse {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+    stroke-width: 0.5;
+    r: 78px;
+  }
+}
+
+#cc-atlas text {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cc-atlas-idx {
+  font: 600 13px var(--cc-mono, monospace);
+  fill: var(--cc-atlas-c, var(--cc-text-muted));
+  pointer-events: none;
+}
+.cc-atlas-lbl {
+  font-family: var(--cc-sans, sans-serif);
+  paint-order: stroke;
+  stroke: var(--cc-bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  animation: ccAtlasFadein 0.6s ease both;
+}
+.cc-atlas-hub .cc-atlas-lbl {
+  font-size: 13.5px;
+  font-weight: 600;
+  fill: var(--cc-text);
+}
+.cc-atlas-child .cc-atlas-lbl {
+  font-size: 11.5px;
+  font-weight: 500;
+  fill: var(--cc-text-muted);
+  transition: fill 0.18s;
+}
+.cc-atlas-child:hover .cc-atlas-lbl,
+.cc-atlas-child.cc-selected .cc-atlas-lbl {
+  fill: var(--cc-text);
+}
+
+/* ---- edges + spine ---- */
+.cc-atlas-edge {
+  fill: none;
+  stroke: var(--cc-atlas-c, var(--cc-text-muted));
+  stroke-width: 1.6;
+  opacity: 0.38;
+  transition:
+    stroke 0.18s,
+    opacity 0.18s,
+    stroke-width 0.18s;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: ccAtlasDraw 0.7s ease forwards;
+}
+@keyframes ccAtlasDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.cc-atlas-edge.cc-active {
+  stroke: var(--cc-accent);
+  opacity: 0.55;
+  stroke-width: 2;
+}
+.cc-atlas-edge.cc-hot {
+  stroke: var(--cc-accent);
+  opacity: 0.95;
+  stroke-width: 2.2;
+}
+.cc-atlas-spine {
+  fill: none;
+  stroke: color-mix(in srgb, var(--cc-text) 8%, transparent);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 7;
+  animation: ccAtlasFadein 1.4s ease both 0.15s;
+}
+
+/* ---- overlay chrome ---- */
+.cc-atlas-hdr {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  font-family: var(--cc-mono, monospace);
+}
+.cc-atlas-hdr-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--cc-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--cc-accent) 50%, transparent);
+}
+.cc-atlas-hdr-t {
+  font-size: 12.5px;
+  color: var(--cc-text-muted);
+  letter-spacing: 0.02em;
+}
+.cc-atlas-hdr-t b {
+  color: var(--cc-text);
+  font-weight: 600;
+}
+.cc-atlas-hdr-n {
+  font-size: 11px;
+  color: var(--cc-text-faint);
+}
+
+.cc-atlas-ctrl {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--cc-mono, monospace);
+}
+.cc-atlas-zoom {
+  font-size: 11px;
+  color: var(--cc-text-faint);
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  min-width: 52px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.cc-atlas-btn {
+  font-family: var(--cc-mono, monospace);
+  font-size: 11px;
+  color: var(--cc-text-muted);
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+.cc-atlas-btn:hover {
+  color: var(--cc-text);
+  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+  background: var(--cc-surface-raised);
+}
+.cc-atlas-btn:active {
+  transform: translateY(1px);
+}
+
+.cc-atlas-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 10.5px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  animation: ccAtlasFadein 1s ease both 0.8s;
+}
+
+.cc-atlas-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font: 13px var(--cc-sans, sans-serif);
+  color: var(--cc-text-faint);
+  pointer-events: none;
+}
+
+/* ---- legend ---- */
+.cc-atlas-legend {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: color-mix(in srgb, var(--cc-bg) 92%, transparent);
+  border: 1px solid var(--cc-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: ccAtlasFadein 0.8s ease both 0.6s;
+}
+.cc-atlas-legend-t {
+  font: 600 10px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+  letter-spacing: 0.14em;
+  margin-bottom: 9px;
+}
+.cc-atlas-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 6px 0;
+  font-size: 11px;
+  color: var(--cc-text-muted);
+}
+.cc-atlas-dot-sw {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--cc-atlas-c, var(--cc-text-muted));
+}
+.cc-atlas-legend-n {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--cc-border);
+  font: 10px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+}
+
+/* ---- tooltip ---- */
+.cc-atlas-tip {
+  position: fixed;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  background: var(--cc-surface-raised);
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  padding: 8px 11px;
+  max-width: 380px;
+  box-shadow: var(--cc-shadow);
+  transform: translate(-50%, -100%);
+}
+.cc-atlas-tip.cc-atlas-tip-show {
+  opacity: 1;
+}
+.cc-atlas-tip-t {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 600 12px var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+}
+.cc-atlas-tip-t .cc-atlas-dot-sw {
+  width: 7px;
+  height: 7px;
+}
+.cc-atlas-tip-p {
+  margin-top: 4px;
+  font: 11.5px var(--cc-sans, sans-serif);
+  color: var(--cc-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 340px;
+}
+
+/* ---- detail panel ---- */
+.cc-atlas-detail {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  bottom: 56px;
+  width: 320px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: 14px;
+  box-shadow: var(--cc-shadow);
+  transform: translateX(calc(100% + 32px));
+  transition: transform 0.32s cubic-bezier(0.3, 0.9, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cc-atlas-detail.cc-open {
+  transform: translateX(0);
+}
+.cc-atlas-detail-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 0;
+}
+.cc-atlas-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--cc-surface-raised);
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font: 10px var(--cc-mono, monospace);
+  letter-spacing: 0.1em;
+  color: var(--cc-text-muted);
+  text-transform: uppercase;
+}
+.cc-atlas-pill .cc-atlas-dot-sw {
+  width: 7px;
+  height: 7px;
+}
+.cc-atlas-detail-x {
+  background: none;
+  border: none;
+  color: var(--cc-text-faint);
+  font-size: 17px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  line-height: 1;
+  padding: 0;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.cc-atlas-detail-x:hover {
+  color: var(--cc-text);
+  background: var(--cc-surface-raised);
+}
+.cc-atlas-detail-b {
+  padding: 14px 18px 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+.cc-atlas-detail-k {
+  font: 10px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+  letter-spacing: 0.12em;
+  margin-bottom: 8px;
+}
+.cc-atlas-detail-t {
+  font: 650 16.5px/1.3 var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+  margin: 0 0 12px;
+}
+.cc-atlas-detail-p {
+  font: 13px/1.62 var(--cc-sans, sans-serif);
+  color: var(--cc-text-muted);
+  margin: 0;
+}
+.cc-atlas-detail-f {
+  padding: 14px 16px;
+  border-top: 1px solid var(--cc-border);
+}
+.cc-atlas-jump {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: 12px var(--cc-mono, monospace);
+  color: var(--cc-accent);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--cc-accent) 50%, transparent);
+  border-radius: 9px;
+  padding: 10px 0;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.cc-atlas-jump:hover {
+  background: color-mix(in srgb, var(--cc-accent) 16%, transparent);
+}
+.cc-atlas-jump:active {
+  transform: translateY(1px);
+}
+
+/* ---- reduced motion: entrances/pans instant, pulse suppressed ---- */
+@media (prefers-reduced-motion: reduce) {
+  .cc-atlas-scaler,
+  .cc-atlas-scaler.cc-atlas-enter,
+  .cc-atlas-lbl,
+  .cc-atlas-edge,
+  .cc-atlas-spine,
+  .cc-atlas-hint,
+  .cc-atlas-legend,
+  .cc-atlas-node.cc-selected .cc-atlas-ring,
+  .cc-atlas-btn,
+  .cc-atlas-detail,
+  .cc-atlas-detail-x,
+  .cc-atlas-jump,
+  .cc-atlas-tip {
+    animation: none;
+    transition: none;
+  }
+  .cc-atlas-edge {
+    stroke-dashoffset: 0;
+  }
+  .cc-atlas-pulse {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* ---- Mini-window (always-on-top pop-out answers) --------------------------- */
+
+/* Popped-out answers live as CARDS in THE single Document PiP window — the
+ * web's only true always-on-top surface (body.cc-pip holds the scrollable
+ * .cc-pip-host card column; several answers stack there). On Firefox (no
+ * Document PiP) each answer gets one small popup instead (body.cc-win, the
+ * card fills it). These rules only ever match inside those windows'
+ * documents — the whole sheet is copied there with a --cc-* token snapshot
+ * (features/mini-window/os-window.ts), so everything below reads var(--cc-*)
+ * exactly like in-page UI. */
+.cc-pip {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font: 13px/1.6 var(--cc-sans);
+}
+.cc-pip-host {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cc-surface-raised-2) transparent;
+}
+.cc-win {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font: 13px/1.6 var(--cc-sans);
+}
+
+/* The card — FLUSH: no titlebar, no border, no box (the window's own slim
+ * strip is the only chrome; a boxed card used to read as a second window
+ * frame). In the PiP column cards grow and the COLUMN scrolls, separated by
+ * hairlines; in a fallback popup one card fills the window. */
+.cc-mw {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  color: var(--cc-text);
+}
+.cc-pip-host > .cc-mw {
+  flex: none;
+}
+.cc-pip-host > .cc-mw + .cc-mw {
+  border-top: 1px solid var(--cc-border);
+}
+.cc-win > .cc-mw {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* the Console status strip — the card's ONLY chrome: sticky while a long
+ * answer scrolls, doubles as the separator/identity in a multi-card column.
+ * ● dot · title · counts · [↩][✕] */
+.cc-mw-strip {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px 4px 14px;
+  font: 600 9.5px/1.4 var(--cc-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+  background: color-mix(in srgb, var(--cc-bg) 88%, transparent);
+  backdrop-filter: blur(5px);
+  border-bottom: 1px solid var(--cc-border);
+  user-select: none;
+}
+.cc-mw-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cc-ok);
+}
+.cc-mw-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cc-mw-counts {
+  flex: none;
+  margin-left: auto;
+  opacity: 0.85;
+}
+.cc-mw-counts:empty {
+  display: none;
+}
+.cc-mw-counts:empty + .cc-mw-btn {
+  margin-left: auto; /* no counts — the buttons take the right edge */
+}
+
+.cc-mw-btn {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--cc-text-faint);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+.cc-mw-btn:hover {
+  background: var(--cc-surface-raised-2);
+  color: var(--cc-text);
+}
+.cc-mw-btn svg {
+  display: block;
+}
+.cc-mw-btn[data-cc-act="close"]:hover {
+  background: color-mix(in srgb, var(--cc-danger) 18%, transparent);
+  color: var(--cc-danger);
+}
+
+/* body — rendered markdown, flush against the window (Console: 12px/1.52
+ * sans, 14px rails that the full-bleed code blocks cancel out). In the PiP
+ * column the CARD grows and the COLUMN scrolls; in a fallback popup the body
+ * itself is the scroller. */
+.cc-mw-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px 12px;
+  font: 12px/1.52 var(--cc-sans);
+  color: var(--cc-text);
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cc-surface-raised-2) transparent;
+}
+.cc-pip-host > .cc-mw > .cc-mw-body {
+  flex: none;
+  overflow: visible;
+}
+
+.cc-mw-md p {
+  margin: 0 0 7px;
+}
+/* Console headings: uppercase micro-labels with an accent dash. h1/h2 read
+ * as primary sections, h3/h4 as muted subsections. */
+.cc-mw-md h1,
+.cc-mw-md h2,
+.cc-mw-md h3,
+.cc-mw-md h4 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 13px 0 6px;
+  font: 700 11px/1.3 var(--cc-sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cc-text);
+}
+.cc-mw-md h1::before,
+.cc-mw-md h2::before,
+.cc-mw-md h3::before,
+.cc-mw-md h4::before {
+  content: "";
+  flex: none;
+  width: 11px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--cc-accent);
+}
+.cc-mw-md h3,
+.cc-mw-md h4 {
+  color: var(--cc-text-muted);
+}
+.cc-mw-md h1:first-child,
+.cc-mw-md h2:first-child,
+.cc-mw-md h3:first-child,
+.cc-mw-md h4:first-child {
+  margin-top: 2px;
+}
+.cc-mw-md .cc-mw-code {
+  font: 11px/1.4 var(--cc-mono);
+  background: color-mix(in srgb, var(--cc-surface) 72%, transparent);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: var(--cc-accent);
+  white-space: pre-wrap;
+}
+/* full-bleed code with the accent rail — cancels the body's 14px side pads */
+.cc-mw-md pre {
+  margin: 0 -14px 9px;
+  padding: 9px 14px;
+  background: color-mix(in srgb, var(--cc-surface) 65%, transparent);
+  border-left: 2px solid var(--cc-accent);
+  overflow-x: auto;
+}
+.cc-mw-md pre code {
+  font: 11px/1.5 var(--cc-mono);
+  color: var(--cc-text);
+  background: none;
+  border: none;
+  padding: 0;
+  white-space: pre;
+}
+.cc-mw-md ul {
+  margin: 0 0 8px;
+  padding-left: 15px;
+}
+.cc-mw-md ul li {
+  margin: 0 0 3px;
+}
+/* Console steps: "01." mono index + dashed row dividers */
+.cc-mw-md ol.cc-mw-steps {
+  list-style: none;
+  counter-reset: cc-mw-step;
+  margin: 0 0 9px;
+  padding: 0;
+}
+.cc-mw-md ol.cc-mw-steps li {
+  counter-increment: cc-mw-step;
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--cc-border) 60%, transparent);
+}
+.cc-mw-md ol.cc-mw-steps li:last-child {
+  border-bottom: none;
+}
+.cc-mw-md ol.cc-mw-steps li::before {
+  content: counter(cc-mw-step, decimal-leading-zero) ".";
+  flex: none;
+  font: 600 10.5px/1.6 var(--cc-mono);
+  color: var(--cc-accent);
+}
+.cc-mw-md blockquote {
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--cc-text-muted);
+  font: 11px/1.55 var(--cc-mono);
+}
+.cc-mw-md blockquote::before {
+  content: "▍";
+  color: var(--cc-accent);
+  margin-right: 5px;
+}
+.cc-mw-md blockquote p {
+  margin: 0;
+  display: inline;
+}
+.cc-mw-md hr {
+  border: none;
+  border-top: 1px solid var(--cc-border);
+  margin: 10px 0;
+}
+.cc-mw-md a {
+  color: var(--cc-accent);
+}
+
+/* tickable checklist — clicking toggles .cc-done (state = the DOM, v1);
+ * Console face: mono labels, sharp compact boxes */
+.cc-mw-checks {
+  margin: 0 0 9px;
+}
+.cc-mw-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 4px;
+  margin: 0 -4px;
+  border-radius: 5px;
+  font: 11.5px/1.5 var(--cc-mono);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease;
+}
+.cc-mw-check:hover {
+  background: var(--cc-surface);
+}
+.cc-mw-check:focus-visible {
+  outline: 1px solid var(--cc-accent);
+}
+.cc-mw-box {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  border: 1.5px solid var(--cc-border);
+  border-radius: 3px;
+  background: var(--cc-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.cc-mw-box svg {
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  display: block;
+  color: var(--cc-bg);
+}
+.cc-mw-check.cc-done .cc-mw-box {
+  background: var(--cc-ok);
+  border-color: var(--cc-ok);
+}
+.cc-mw-check.cc-done .cc-mw-box svg {
+  opacity: 1;
+  transform: scale(1);
+}
+.cc-mw-check.cc-done .cc-mw-lbl {
+  color: var(--cc-text-faint);
+  text-decoration: line-through;
+}
+.cc-mw-lbl {
+  transition: color 0.15s ease;
+}
+
+/* reduced motion: no micro-transitions inside the windows */
+@media (prefers-reduced-motion: reduce) {
+  .cc-mw-btn,
+  .cc-mw-check,
+  .cc-mw-box,
+  .cc-mw-box svg,
+  .cc-mw-lbl {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ---- Per-answer tools ---------------------------------------------- */
+
+/* Positioning-only slot requests (answer-toolbar asks decorations for a slot
+ * purely to guarantee the answer is a positioned ancestor + thread-guarded,
+ * and leaves the slot empty). An empty slot must not cost the gutter rail a
+ * flex gap. */
+.cc-gutter > .cc-slot:empty {
+  display: none;
+}
+
+/* answer-toolbar — compact hover/focus toolbar at the top-right of every
+ * answer. Hidden at rest; revealed on answer hover, on keyboard focus
+ * (:focus-within — real buttons, tabbable), and permanently on coarse-pointer
+ * devices (no hover there; the actions are non-essential duplicates of the
+ * palette/gutter, but stay reachable). */
+.cc-atb {
+  position: absolute;
+  top: -8px;
+  right: 0;
+  z-index: 31; /* Z.meta — over the answer's content, under every panel */
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  background: var(--cc-surface-raised);
+  box-shadow: var(--cc-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out;
+}
+.font-claude-response:hover > .cc-atb,
+.cc-atb:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: none) and (pointer: coarse) {
+  .cc-atb {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+.cc-atb-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.cc-atb-btn:hover {
+  background: var(--cc-surface-raised-2);
+  border-color: var(--cc-border);
+  color: var(--cc-text);
+}
+.cc-atb-btn:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+/* action feedback flashes (JS swaps the icon to a ✓ for a moment) */
+.cc-atb-btn.cc-atb-done {
+  color: var(--cc-ok);
+}
+.cc-atb-btn.cc-atb-fail {
+  color: var(--cc-danger);
+}
+/* pin reflects state: accent (with a filled icon, JS-swapped) while THIS
+ * answer is pinned; the flash colors above win for their moment. */
+.cc-atb-btn.cc-atb-pinned:not(.cc-atb-done):not(.cc-atb-fail) {
+  color: var(--cc-accent);
+}
+/* pop-out reflects state too: accent + a soft fill while THIS answer's card
+ * is up in the always-on-top mini-window — the visible "it's out there"
+ * handle that also closes it (toggle). */
+.cc-atb-btn.cc-atb-popped:not(.cc-atb-done):not(.cc-atb-fail) {
+  color: var(--cc-accent);
+  background: color-mix(in srgb, var(--cc-accent) 16%, transparent);
+}
+/* legacy-clipboard scratch textarea — parked far off-screen under #cc-root */
+.cc-atb-clip {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+/* thread-only guard: message-like markup also renders in the artifact /
+ * document viewer and must NEVER show companion controls. The features
+ * already guard via decorations/selectors; this is the CSS safety net,
+ * mirroring the .cc-gutter / .cc-meta-area rule. */
+.cc-atb:not([data-test-render-count] *) {
+  display: none !important;
+}
+
+/* reduced motion: reveals/fades are instant */
+@media (prefers-reduced-motion: reduce) {
+  .cc-atb,
+  .cc-atb-btn {
+    transition: none;
+  }
+}
+
+/* ---- Find ----------------------------------------------------------- */
+
+/* find-in-conversation — companion find bar over the API index (sees every
+ * message; the browser's native Ctrl+F only sees the rendered/virtualized
+ * window). Fixed top-center under claude's header; outline-family chrome. */
+.cc-find {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40; /* Z.panel */
+  width: min(600px, 92vw);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  box-shadow: var(--cc-shadow);
+}
+
+.cc-find-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+}
+.cc-find-input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+.cc-find-count {
+  flex: none;
+  min-width: 52px;
+  text-align: center;
+  white-space: nowrap;
+  font: 10.5px/1.5 var(--cc-mono);
+  color: var(--cc-text-muted);
+}
+.cc-find-btn {
+  flex: none;
+  padding: 4px 7px;
+  font-size: 11.5px;
+}
+.cc-find-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cc-find-btn:disabled:hover {
+  background: transparent;
+}
+/* toggle active state — the aria-pressed idiom (gear rows) */
+.cc-find-btn[aria-pressed="true"] {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+}
+.cc-find-close {
+  flex: none;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-text-faint);
+  font-size: 12px;
+  cursor: pointer;
+}
+.cc-find-close:hover {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+}
+.cc-find-btn:focus-visible,
+.cc-find-close:focus-visible,
+.cc-find-row:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: -2px;
+}
+
+/* result list — collapses entirely while the query is empty */
+.cc-find-list {
+  max-height: 44vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--cc-border);
+  padding: 6px;
+}
+.cc-find-list:empty {
+  display: none;
+}
+.cc-find-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.cc-find-row:hover,
+.cc-find-row[data-active="1"] {
+  background: var(--cc-surface-raised);
+}
+.cc-find-who {
+  flex: none;
+  min-width: 44px;
+  font: 10.5px/1.5 var(--cc-mono);
+  color: var(--cc-text-faint);
+}
+.cc-find-snip {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cc-find-em {
+  color: var(--cc-accent);
+  font-weight: 600;
+}
+.cc-find-no {
+  flex: none;
+  font-size: 11px;
+  color: var(--cc-text-faint);
+}
+.cc-find-empty {
+  padding: 10px 8px;
+  color: var(--cc-text-faint);
+}
+
+/* in-message match emphasis — unstamped reversible wraps (owner-sweep rule,
+ * same as mark.cc-hl); textContent byte-identical; unwrapped on
+ * every new jump, query change, close, and teardown. Tint fades out on its
+ * own (brief emphasis); under reduced motion it stays as a static tint until
+ * unwrap — no animation. */
+span.cc-find-hit {
+  border-radius: 3px;
+  padding: 0 1px;
+  margin: 0 -1px; /* padding optically absorbed — line metrics unchanged */
+  background: color-mix(in oklab, var(--cc-accent) 32%, transparent);
+  animation: ccFindFade 2.4s ease-out 1 both;
+}
+@keyframes ccFindFade {
+  0%,
+  55% {
+    background-color: color-mix(in oklab, var(--cc-accent) 32%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* fallback when the match can't be re-found in rendered markup (markdown
+ * markers, split text nodes): transient outline flash on the whole message */
+.cc-find-flash {
+  animation: ccFindOutline 1.6s ease-out 1;
+}
+@keyframes ccFindOutline {
+  0% {
+    outline: 2px solid var(--cc-accent);
+    outline-offset: 3px;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  span.cc-find-hit {
+    animation: none;
+  }
+  .cc-find-flash {
+    animation: none;
+    outline: 2px solid var(--cc-accent);
+    outline-offset: 3px;
+  }
+}
+
+/* ---- Output repair ---------------------------------------------------- */
+
+/* Shared: the three repair affordances are additive owned nodes appended
+ * INSIDE assistant messages. Chip labels render via ::before content:attr()
+ * (the innerText-invisible technique) so they add ZERO characters to the answer's innerText —
+ * dom-matcher probes, folding fold-heads, selection and clipboard stay clean.
+ * The fence-fixer PANEL is the one deliberate innerText addition; it only
+ * attaches after the answer's uuid is cached (see fence-fixer/index.ts). */
+
+/* truncation-guard — "looks cut off — continue" row on the last answer */
+.cc-tg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font: 12px/1.5 var(--cc-sans);
+  user-select: none;
+}
+.cc-tg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  background: var(--cc-surface);
+  color: var(--cc-text-muted);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.cc-tg-btn::before {
+  /* label text lives in the attribute — zero innerText added to the answer */
+  content: attr(data-cc-label);
+  order: 2;
+}
+.cc-tg-btn svg {
+  order: 1;
+}
+.cc-tg-btn:hover {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+  background: var(--cc-surface-raised);
+}
+.cc-tg-btn:focus-visible,
+.cc-tg-x:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-tg-btn.cc-tg-blocked {
+  border-color: var(--cc-danger);
+  color: var(--cc-danger);
+}
+.cc-tg-btn svg {
+  flex: none;
+  color: var(--cc-gold);
+}
+.cc-tg-btn:hover svg {
+  color: var(--cc-accent);
+}
+.cc-tg-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-text-faint);
+  cursor: pointer;
+}
+.cc-tg-x:hover {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+}
+
+/* fence-fixer — chip + display-only repair panel */
+.cc-ff-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  background: var(--cc-surface);
+  color: var(--cc-text-muted);
+  font: 12px/1.5 var(--cc-sans);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.cc-ff-chip::before {
+  content: attr(data-cc-label);
+  order: 2;
+}
+.cc-ff-chip svg {
+  flex: none;
+  order: 1;
+}
+.cc-ff-chip:hover {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+  background: var(--cc-surface-raised);
+}
+.cc-ff-chip:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-ff-chip[aria-pressed="true"] {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+}
+
+.cc-ff-panel {
+  margin-top: 10px;
+  border: 1px solid var(--cc-border);
+  border-left: 3px solid var(--cc-accent);
+  border-radius: 10px;
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  box-shadow: var(--cc-shadow);
+  overflow: hidden;
+}
+.cc-ff-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+  border-bottom: 1px solid var(--cc-border);
+  background: color-mix(in oklab, var(--cc-accent) 6%, transparent);
+}
+.cc-ff-title {
+  flex: 1;
+  min-width: 0;
+  font: 600 11px/1.4 var(--cc-sans);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--cc-text-muted);
+}
+.cc-ff-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--cc-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 11px/1.5 var(--cc-sans);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cc-ff-copy:hover {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+  background: var(--cc-surface-raised);
+}
+.cc-ff-copy:focus-visible,
+.cc-ff-close:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-ff-copy.cc-ff-done {
+  color: var(--cc-ok);
+  border-color: var(--cc-ok);
+}
+.cc-ff-copy.cc-ff-fail {
+  color: var(--cc-danger);
+  border-color: var(--cc-danger);
+}
+.cc-ff-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-text-faint);
+  cursor: pointer;
+}
+.cc-ff-close:hover {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+}
+.cc-ff-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+.cc-ff-fencemark {
+  margin: 10px 0;
+  padding: 5px 10px;
+  border: 1px dashed var(--cc-border);
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--cc-gold) 8%, transparent);
+  color: var(--cc-text-muted);
+  font: italic 11.5px/1.5 var(--cc-sans);
+}
+
+/* the re-rendered markdown body — hardened font/line rules like
+ * .cc-meta-area so theme typography (!important descendant selectors) can't
+ * distort it */
+.cc-ff-md {
+  font: 13.5px/1.6 var(--cc-sans) !important;
+  color: var(--cc-text);
+}
+.cc-ff-md p,
+.cc-ff-md li {
+  margin: 0 0 8px;
+}
+.cc-ff-md ul,
+.cc-ff-md ol {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+.cc-ff-md h1,
+.cc-ff-md h2,
+.cc-ff-md h3,
+.cc-ff-md h4 {
+  margin: 14px 0 6px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--cc-text);
+}
+.cc-ff-md h1 {
+  font-size: 17px;
+}
+.cc-ff-md h2 {
+  font-size: 15.5px;
+}
+.cc-ff-md h3 {
+  font-size: 14px;
+}
+.cc-ff-md h4 {
+  font-size: 13.5px;
+}
+.cc-ff-md hr {
+  border: 0;
+  border-top: 1px solid var(--cc-border);
+  margin: 12px 0;
+}
+.cc-ff-md blockquote {
+  margin: 0 0 8px;
+  padding: 2px 12px;
+  border-left: 3px solid var(--cc-border);
+  color: var(--cc-text-muted);
+}
+.cc-ff-md pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  background: var(--cc-surface-raised);
+  overflow-x: auto;
+}
+.cc-ff-md pre code {
+  font: 12px/1.55 var(--cc-mono);
+  color: var(--cc-text);
+  white-space: pre;
+}
+.cc-ff-md .cc-ff-code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--cc-surface-raised);
+  font: 12px/1.4 var(--cc-mono);
+}
+.cc-ff-md a {
+  color: var(--cc-accent);
+  text-decoration: underline;
+}
+
+/* regen-safety-net — chip + saved-answer viewer */
+.cc-rsn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  margin-right: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  background: var(--cc-surface);
+  color: var(--cc-text-muted);
+  font: 12px/1.5 var(--cc-sans);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.cc-rsn-chip::before {
+  content: attr(data-cc-label);
+  order: 2;
+}
+.cc-rsn-chip svg {
+  flex: none;
+  order: 1;
+  color: var(--cc-gold);
+}
+.cc-rsn-chip:hover {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+  background: var(--cc-surface-raised);
+}
+.cc-rsn-chip:hover svg {
+  color: var(--cc-accent);
+}
+.cc-rsn-chip:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+
+.cc-rsn-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40; /* Z.panel */
+  background: color-mix(in oklab, var(--cc-bg) 45%, transparent);
+}
+.cc-rsn-panel {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 40; /* Z.panel */
+  display: flex;
+  flex-direction: column;
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(72vh, 640px);
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  box-shadow: var(--cc-shadow);
+  overflow: hidden;
+}
+.cc-rsn-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 9px 10px 9px 14px;
+  border-bottom: 1px solid var(--cc-border);
+  background: color-mix(in oklab, var(--cc-gold) 6%, transparent);
+}
+.cc-rsn-title {
+  flex: 1;
+  min-width: 0;
+  font: 600 11px/1.4 var(--cc-sans);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--cc-text-muted);
+}
+.cc-rsn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--cc-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 11px/1.5 var(--cc-sans);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cc-rsn-copy:hover {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+  background: var(--cc-surface-raised);
+}
+.cc-rsn-copy:focus-visible,
+.cc-rsn-close:focus-visible,
+.cc-rsn-tab:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-rsn-copy.cc-rsn-done {
+  color: var(--cc-ok);
+  border-color: var(--cc-ok);
+}
+.cc-rsn-copy.cc-rsn-fail {
+  color: var(--cc-danger);
+  border-color: var(--cc-danger);
+}
+.cc-rsn-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-text-faint);
+  cursor: pointer;
+}
+.cc-rsn-close:hover {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+}
+.cc-rsn-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: none;
+  padding: 8px 14px 0;
+}
+.cc-rsn-tab {
+  padding: 3px 9px;
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 11px/1.5 var(--cc-mono);
+  cursor: pointer;
+}
+.cc-rsn-tab:hover {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+}
+.cc-rsn-tab[aria-pressed="true"] {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+}
+.cc-rsn-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+  font: 12.5px/1.6 var(--cc-mono);
+  color: var(--cc-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cc-rsn-foot {
+  flex: none;
+  padding: 7px 14px;
+  border-top: 1px solid var(--cc-border);
+  color: var(--cc-text-faint);
+  font: 11px/1.5 var(--cc-sans);
+}
+
+/* legacy-clipboard scratch textareas — parked far off-screen under #cc-root */
+.cc-ff-clip,
+.cc-rsn-clip {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+/* thread-only guard: message-like markup also renders in the artifact /
+ * document viewer and must NEVER show companion controls — CSS safety net
+ * mirroring the .cc-atb rule. */
+.cc-tg:not([data-test-render-count] *),
+.cc-ff-chip:not([data-test-render-count] *),
+.cc-ff-panel:not([data-test-render-count] *),
+.cc-rsn-chip:not([data-test-render-count] *) {
+  display: none !important;
+}
+
+/* reduced motion: chip transitions are instant */
+@media (prefers-reduced-motion: reduce) {
+  .cc-tg-btn,
+  .cc-ff-chip,
+  .cc-rsn-chip {
+    transition: none;
+  }
+}
+
+/* ---- Data & media ---------------------------------------------------- */
+
+/* Shared: all three features attach ADDITIVE owned nodes; every visible
+ * string inside claude's messages renders via ::before content:attr() or
+ * inline SVG (the innerText-invisible technique) so nothing is added to the answer's
+ * innerText — dom-matcher probes, folding fold-heads, selection and
+ * clipboard stay clean. The expand/lightbox overlays are own UI under
+ * #cc-root in the Z.chip band (full-screen overlay precedent: atlas,
+ * palette). */
+
+/* table-extractor — slim bar in NORMAL FLOW, directly BELOW the table:
+ * inserted as a sibling right AFTER the table's overflow-x-auto scroll
+ * wrapper (or after the table itself when no wrapper exists), right-aligned
+ * (2026-07-22: replaced the absolute bottom-right overlay, which covered the
+ * table's last rows; being below the table also keeps it clear of the answer
+ * hover-toolbar at the message's top-right). The wrapper is taller than the
+ * table (contained bottom margin) + has its own bottom margin, so raw flow
+ * position sits too low — the feature snugs each bar to ~3px under the
+ * table's REAL bottom edge with a measured inline `top` offset; hence
+ * position: relative here. Still in flow, still never overlaps a cell (the
+ * offset is derived from live rects, it only tucks the bar into claude's own
+ * empty margin band). Translucent at rest, solidifies on hover/focus. */
+.cc-tx-bar {
+  position: relative; /* anchor for the measured snug `top` offset */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 0 2px;
+  /* Hardened font — themes style answer descendants with
+   * !important typography the bar must never inherit. */
+  font: 10.5px/1.4 var(--cc-mono) !important;
+  color: var(--cc-text-muted);
+  user-select: none;
+  opacity: 0.65;
+  transition: opacity 0.15s;
+}
+.cc-tx-bar:hover,
+.cc-tx-bar:focus-within {
+  opacity: 1;
+}
+/* rows×cols badge — text via the innerText-invisible attr() technique */
+.cc-tx-dim {
+  margin-right: 4px;
+  letter-spacing: 0.4px;
+  color: var(--cc-text-faint);
+}
+.cc-tx-dim::before {
+  content: attr(data-cc-dim);
+}
+.cc-tx-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.cc-tx-btn:hover {
+  background: var(--cc-surface-raised-2);
+  border-color: var(--cc-border);
+  color: var(--cc-text);
+}
+.cc-tx-btn:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-tx-btn.cc-tx-done {
+  color: var(--cc-ok);
+}
+.cc-tx-btn.cc-tx-fail {
+  color: var(--cc-danger);
+}
+
+/* expanded-table overlay — own UI, full screen, sortable copy of the
+ * EXTRACTED model (claude's table is never reordered) */
+.cc-tx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 44; /* Z.chip band — full-screen overlay, below claude's z-50 modals */
+  display: flex;
+  padding: 4vh 4vw;
+  /* Theme-aware scrim, tokens only (palette convention). */
+  background: color-mix(in srgb, var(--cc-bg) 72%, transparent);
+}
+.cc-tx-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 100%);
+  max-height: 92vh;
+  margin: auto;
+  outline: none;
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  box-shadow: var(--cc-shadow);
+  overflow: hidden;
+}
+.cc-tx-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cc-border);
+  font-size: 13px;
+}
+.cc-tx-title {
+  font-weight: 600;
+}
+.cc-tx-hint {
+  margin-right: auto;
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--cc-text-faint);
+}
+.cc-tx-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.cc-tx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.cc-tx-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1; /* local stacking inside the overlay only */
+  padding: 0;
+  background: var(--cc-surface-raised);
+  border-bottom: 1px solid var(--cc-border);
+  text-align: left;
+}
+.cc-tx-th {
+  display: block;
+  width: 100%;
+  padding: 8px 22px 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--cc-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+.cc-tx-th:hover {
+  background: var(--cc-surface-raised-2);
+}
+.cc-tx-th:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: -2px;
+}
+/* sort direction indicator — pseudo content keyed on th[data-cc-sort] */
+.cc-tx-table th[data-cc-sort="asc"] > .cc-tx-th::after,
+.cc-tx-table th[data-cc-sort="desc"] > .cc-tx-th::after {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: var(--cc-accent);
+}
+.cc-tx-table th[data-cc-sort="asc"] > .cc-tx-th::after {
+  content: "▲";
+}
+.cc-tx-table th[data-cc-sort="desc"] > .cc-tx-th::after {
+  content: "▼";
+}
+.cc-tx-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--cc-border) 55%, transparent);
+  vertical-align: top;
+}
+.cc-tx-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--cc-text) 3%, transparent);
+}
+
+/* legacy-clipboard scratch textarea — parked far off-screen under #cc-root */
+.cc-tx-clip {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+/* image-lightbox — reversible marker class on eligible content images:
+ * cursor + a subtle hover ring as the "click to zoom" affordance (an <img>
+ * can't carry pseudo-element labels; the ring is the affordance) */
+img.cc-ilb-img {
+  cursor: zoom-in;
+  transition: box-shadow 0.15s;
+}
+img.cc-ilb-img:hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-accent) 55%, transparent);
+}
+
+/* the lightbox overlay — own UI under #cc-root */
+.cc-ilb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 44; /* Z.chip band — full-screen overlay, below claude's z-50 modals */
+  display: flex;
+  flex-direction: column;
+  /* Near-opaque theme-aware scrim, tokens only (palette convention). */
+  background: color-mix(in srgb, var(--cc-bg) 93%, transparent);
+}
+.cc-ilb-bar {
+  display: flex;
+  align-self: flex-end;
+  gap: 4px;
+  margin: 12px 14px 0 0;
+  padding: 4px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  box-shadow: var(--cc-shadow);
+}
+.cc-ilb-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.cc-ilb-btn:hover {
+  background: var(--cc-surface-raised-2);
+  border-color: var(--cc-border);
+  color: var(--cc-text);
+}
+.cc-ilb-btn:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-ilb-btn[aria-pressed="true"] {
+  border-color: var(--cc-accent);
+  color: var(--cc-accent);
+}
+.cc-ilb-btn.cc-ilb-done {
+  color: var(--cc-ok);
+}
+.cc-ilb-btn.cc-ilb-fail {
+  color: var(--cc-danger);
+}
+/* stage: flex + margin:auto centers a small image AND lets a larger-than-
+ * viewport image scroll correctly in actual-size mode */
+.cc-ilb-stage {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+}
+.cc-ilb-pic {
+  margin: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: zoom-in;
+  border-radius: 4px;
+  box-shadow: var(--cc-shadow);
+}
+.cc-ilb-actual .cc-ilb-pic {
+  max-width: none;
+  max-height: none;
+  cursor: zoom-out;
+}
+.cc-ilb-caption {
+  align-self: center;
+  max-width: min(720px, 90vw);
+  margin: 0 0 14px;
+  padding: 5px 12px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  text-align: center;
+}
+
+/* thread-only guard: message-like markup also renders in the artifact /
+ * document viewer and must NEVER show companion controls — CSS safety net
+ * mirroring the .cc-atb rule. */
+.cc-tx-bar:not([data-test-render-count] *) {
+  display: none !important;
+}
+
+/* reduced motion: transitions instant */
+@media (prefers-reduced-motion: reduce) {
+  .cc-tx-bar,
+  .cc-tx-btn,
+  .cc-ilb-btn,
+  img.cc-ilb-img {
+    transition: none;
+  }
+}
+
+/* ---- Trust ------------------------------------------------------------ */
+
+/* math-checker — inline mark on the STATED RESULT of an arithmetic claim
+ * that doesn't recompute. Reversible-wrap hygiene: textContent stays
+ * byte-identical, no data-cc-owner (owner-sweep would delete answer text),
+ * tint + wavy underline only — nothing that changes layout/metrics. The ⚠
+ * affordance is a ::after pseudo, which never appears in textContent /
+ * innerText / copies, so dom-matcher probes and folding stay exact. */
+span.cc-mc-bad {
+  border-radius: 3px;
+  padding: 0 1px;
+  margin: 0 -1px; /* padding optically absorbed — line metrics unchanged */
+  background: color-mix(in oklab, var(--cc-danger) 20%, transparent);
+  text-decoration: underline wavy;
+  text-decoration-color: var(--cc-danger);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: help; /* the title tooltip carries the recomputed value */
+}
+span.cc-mc-bad::after {
+  content: "⚠";
+  font-size: 0.7em;
+  vertical-align: super;
+  color: var(--cc-danger);
+}
+
+/* ---- Delight & memory ---------------------------------------------- */
+
+/* live-checklists — additive tick affordance on Claude's step lists. The
+ * checkbox button and the progress chip carry ZERO text: the ✓ and the "3/7"
+ * are pseudo-element content (attr()), which never enters textContent /
+ * innerText — dom-matcher probes, fold-heads, selection and copy stay
+ * byte-identical (same reversible-wrap hygiene contract as mark.cc-hl). */
+.cc-clk-box {
+  position: absolute;
+  left: -2.7em;
+  top: 0.3em;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 1.5px solid var(--cc-border);
+  border-radius: 4px;
+  background: var(--cc-surface);
+  cursor: pointer;
+  z-index: 30; /* Z.gutter */
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+/* Step-paragraph items sit at the message's left edge — tuck the box in a
+ * little so it clears the fold/pin gutter rail. */
+p > .cc-clk-box {
+  left: -2.1em;
+}
+.cc-clk-box:hover {
+  border-color: var(--cc-accent);
+}
+.cc-clk-box:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-clk-box.cc-clk-on {
+  border-color: var(--cc-accent);
+  background: var(--cc-accent);
+}
+.cc-clk-box.cc-clk-on::after {
+  content: "✓"; /* pseudo-element — invisible to innerText */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cc-bg);
+  font: 700 10.5px/1 var(--cc-sans);
+}
+/* Ticked items dim (reversible class on claude's li/p — visual only; the
+ * checkbox dims with its item, which reads correctly as "done"). */
+.cc-clk-done {
+  opacity: 0.55;
+}
+/* Per-list progress read-out — pseudo-element text from a data attribute. */
+.cc-clk-progress {
+  position: absolute;
+  top: -1.5em;
+  right: 0;
+  pointer-events: none;
+  color: var(--cc-text-faint);
+  font: 10.5px/1.5 var(--cc-mono);
+}
+.cc-clk-progress::after {
+  content: attr(data-cc-progress);
+  padding: 1px 7px;
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  background: var(--cc-surface);
+}
+.cc-clk-progress.cc-clk-complete {
+  color: var(--cc-ok);
+}
+
+/* reduced motion: checkbox transitions instant */
+@media (prefers-reduced-motion: reduce) {
+  .cc-clk-box {
+    transition: none;
+  }
+}
+
+/* ---- Self-healing: health dashboard ---------------------------------------
+ * selector-health — the anchors-into-claude.ai dashboard + override editor
+ * (mockup: internal/design/mockups/self-healing-mockup.html). Dark dev-tool
+ * look from the shared tokens; health colors: ok=--cc-ok, fallback=--cc-gold,
+ * broken=--cc-danger. Shares the palette's z-44 band (the feature closes
+ * itself when the palette opens). */
+
+.cc-sh-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 44; /* Z.chip band — below claude's z-50 modals */
+  background: var(--cc-bg);
+  opacity: 0.55;
+}
+
+.cc-sh-panel {
+  position: fixed;
+  z-index: 44; /* Z.chip band — below claude's z-50 modals */
+  top: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(880px, 94vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  box-shadow: var(--cc-shadow);
+  overflow: hidden;
+}
+
+.cc-sh-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cc-border);
+  background: var(--cc-surface-raised);
+  flex: none;
+}
+.cc-sh-head-t {
+  font-size: 13px;
+  font-weight: 600;
+}
+.cc-sh-head-d {
+  color: var(--cc-text-muted);
+  font-size: 12px;
+}
+.cc-sh-head-sub {
+  flex: 1;
+  text-align: right;
+  font-family: var(--cc-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint);
+}
+.cc-sh-x {
+  flex: none;
+  align-self: center;
+  background: transparent;
+  border: none;
+  color: var(--cc-text-muted);
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.cc-sh-x:hover {
+  color: var(--cc-text);
+  background: color-mix(in srgb, var(--cc-text) 10%, transparent);
+}
+
+.cc-sh-body {
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* shared button accents */
+.cc-sh-btn-accent {
+  background: var(--cc-accent);
+  color: var(--cc-bg);
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.cc-sh-btn-accent:hover {
+  filter: brightness(1.08);
+}
+.cc-sh-btn-accent:focus-visible,
+.cc-sh-mini:focus-visible,
+.cc-sh-x:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 2px;
+}
+
+/* banner strip (inside the panel) + floating break alert */
+.cc-sh-banner,
+.cc-sh-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+.cc-sh-banner-bad,
+.cc-sh-alert {
+  background: color-mix(in srgb, var(--cc-danger) 14%, var(--cc-surface));
+  border: 1px solid color-mix(in srgb, var(--cc-danger) 40%, transparent);
+}
+.cc-sh-banner-ok {
+  background: color-mix(in srgb, var(--cc-ok) 14%, var(--cc-surface));
+  border: 1px solid color-mix(in srgb, var(--cc-ok) 40%, transparent);
+}
+.cc-sh-banner-host:empty {
+  display: none;
+}
+.cc-sh-alert {
+  position: fixed;
+  z-index: 44; /* Z.chip band — below claude's z-50 modals */
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 92vw);
+  box-sizing: border-box;
+  box-shadow: var(--cc-shadow);
+  animation: cc-sh-alert-in 0.25s ease;
+}
+@keyframes cc-sh-alert-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+.cc-sh-alert-sig {
+  flex: none;
+  font-size: 15px;
+  color: var(--cc-danger);
+}
+.cc-sh-alert-msg {
+  flex: 1;
+  min-width: 0;
+}
+
+/* card chrome (dashboard table / editor) */
+.cc-sh-card {
+  background: var(--cc-bg);
+  border: 1px solid var(--cc-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* dashboard table */
+.cc-sh-dash {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.cc-sh-dash th {
+  font-family: var(--cc-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cc-text-faint);
+  text-align: left;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--cc-border);
+}
+.cc-sh-dash td {
+  padding: 8px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+  vertical-align: top;
+}
+.cc-sh-dash tr:last-child td {
+  border-bottom: none;
+}
+.cc-sh-broken-row {
+  background: color-mix(in srgb, var(--cc-danger) 10%, transparent);
+}
+.cc-sh-anchor {
+  font-family: var(--cc-mono);
+  font-size: 12px;
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+.cc-sh-kind {
+  font-size: 9.5px;
+  color: var(--cc-text-faint);
+}
+.cc-sh-anchor-desc {
+  color: var(--cc-text-faint);
+  font-size: 11px;
+  margin-top: 1px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-sh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--cc-mono);
+  font-size: 10.5px;
+  border-radius: 5px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.cc-sh-ok {
+  color: var(--cc-ok);
+  background: color-mix(in srgb, var(--cc-ok) 14%, transparent);
+}
+.cc-sh-amber {
+  color: var(--cc-gold);
+  background: color-mix(in srgb, var(--cc-gold) 14%, transparent);
+}
+.cc-sh-danger {
+  color: var(--cc-danger);
+  background: color-mix(in srgb, var(--cc-danger) 14%, transparent);
+}
+.cc-sh-dim {
+  color: var(--cc-text-faint);
+  background: color-mix(in srgb, var(--cc-text-faint) 12%, transparent);
+}
+.cc-sh-tag {
+  display: inline-block;
+  font-family: var(--cc-mono);
+  font-size: 9.5px;
+  color: var(--cc-text-muted);
+  border: 1px solid var(--cc-border);
+  border-radius: 4px;
+  padding: 0 5px;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+.cc-sh-deps {
+  color: var(--cc-text-muted);
+  font-size: 11px;
+  font-family: var(--cc-mono);
+  max-width: 190px;
+}
+.cc-sh-meta {
+  color: var(--cc-text-faint);
+  font-size: 10.5px;
+  font-family: var(--cc-mono);
+  white-space: nowrap;
+}
+.cc-sh-act {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* editor */
+.cc-sh-ed-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--cc-border);
+  background: var(--cc-surface-raised);
+}
+.cc-sh-ed-t {
+  font-size: 12px;
+  font-weight: 600;
+}
+.cc-sh-ed-path {
+  flex: 1;
+  font-family: var(--cc-mono);
+  font-size: 10px;
+  color: var(--cc-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-sh-file {
+  display: none;
+}
+.cc-sh-ed-status {
+  font-family: var(--cc-mono);
+  font-size: 11px;
+  color: var(--cc-ok);
+  padding: 8px 14px 0;
+}
+.cc-sh-ed-status-bad {
+  color: var(--cc-danger);
+}
+.cc-sh-ed {
+  font-family: var(--cc-mono);
+  font-size: 11.5px;
+  padding: 10px 0;
+}
+.cc-sh-grp {
+  padding: 6px 16px;
+  color: var(--cc-text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cc-sh-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 16px;
+}
+.cc-sh-locked {
+  opacity: 0.55;
+}
+.cc-sh-lock {
+  flex: none;
+  font-size: 9.5px;
+  margin-top: 2px;
+}
+.cc-sh-nm {
+  width: 160px;
+  flex: none;
+  color: var(--cc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-sh-vl {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+.cc-sh-shadowed .cc-sh-vl {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--cc-danger) 60%, transparent);
+}
+.cc-sh-ov {
+  background: color-mix(in srgb, var(--cc-accent) 12%, transparent);
+  border-left: 2px solid var(--cc-accent);
+  margin: 2px 0;
+}
+.cc-sh-src {
+  flex: none;
+  font-size: 9.5px;
+  color: var(--cc-accent);
+  border: 1px solid color-mix(in srgb, var(--cc-accent) 40%, transparent);
+  border-radius: 4px;
+  padding: 0 5px;
+  margin-top: 2px;
+}
+.cc-sh-mini {
+  flex: none;
+  background: transparent;
+  border: 1px solid var(--cc-border);
+  color: var(--cc-text-muted);
+  font-family: var(--cc-mono);
+  font-size: 10px;
+  padding: 1px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cc-sh-mini:hover {
+  color: var(--cc-text);
+  border-color: color-mix(in srgb, var(--cc-text) 30%, transparent);
+}
+.cc-sh-reset:hover {
+  color: var(--cc-danger);
+  border-color: var(--cc-danger);
+}
+
+/* edit form */
+.cc-sh-form {
+  margin: 4px 16px 10px;
+  padding: 10px 12px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cc-sh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cc-sh-field-k {
+  font-family: var(--cc-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cc-text-faint);
+}
+.cc-sh-in {
+  font-size: 12px;
+  padding: 6px 9px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.cc-sh-mono {
+  font-family: var(--cc-mono);
+}
+.cc-sh-ta {
+  resize: vertical;
+  min-height: 34px;
+}
+.cc-sh-hint {
+  font-family: var(--cc-mono);
+  font-size: 10px;
+  color: var(--cc-text-faint);
+}
+.cc-sh-err {
+  font-family: var(--cc-mono);
+  font-size: 11px;
+  color: var(--cc-danger);
+}
+.cc-sh-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cc-sh-ed-note {
+  padding: 8px 16px 12px;
+  color: var(--cc-text-faint);
+  font-size: 10.5px;
+  border-top: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+}
+
+/* gear-menu degraded count */
+.cc-gear-degraded {
+  color: var(--cc-gold);
+}
+
+/* reduced motion: alert entrance instant */
+@media (prefers-reduced-motion: reduce) {
+  .cc-sh-alert {
+    animation: none;
+  }
+}
+
+/* ---- Self-healing: "Repair with Claude" (Phase 3) --------------------------
+ * repair.ts — the guided repair card inside the health panel (mockup §3):
+ * broken selector, session/API source toggle, paste-back, red→green diff,
+ * live match count, Apply/Reject. Plus .cc-probe-flash, the decorations
+ * outline that shows what a probed selector grabbed. Tokens only. */
+
+.cc-sr-host:empty {
+  display: none;
+}
+
+.cc-sr-card {
+  border: 1px solid color-mix(in srgb, var(--cc-accent) 35%, var(--cc-border));
+}
+
+.cc-sr-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--cc-border);
+  background: var(--cc-surface-raised);
+}
+.cc-sr-head-t {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.cc-sr-name {
+  font-family: var(--cc-mono);
+  font-size: 12px;
+  color: var(--cc-danger);
+}
+.cc-sr-head-meta {
+  flex: 1;
+  text-align: right;
+}
+
+.cc-sr-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cc-sr-fld {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cc-sr-k {
+  font-family: var(--cc-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cc-text-faint);
+}
+
+.cc-sr-code {
+  background: var(--cc-bg);
+  border: 1px solid var(--cc-border);
+  border-radius: 7px;
+  font-family: var(--cc-mono);
+  font-size: 12px;
+  padding: 7px 11px;
+  overflow-x: auto;
+  white-space: pre;
+}
+.cc-sr-code-bad {
+  color: var(--cc-danger);
+}
+
+.cc-sr-used {
+  color: var(--cc-text-muted);
+  font-size: 12px;
+}
+
+/* source toggle */
+.cc-sr-srcrow {
+  display: flex;
+  gap: 8px;
+}
+.cc-sr-src {
+  flex: 1;
+  text-align: left;
+  background: var(--cc-bg);
+  border: 1px solid var(--cc-border);
+  border-radius: 7px;
+  padding: 8px 12px;
+  color: var(--cc-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.cc-sr-src:hover {
+  background: var(--cc-surface-raised);
+}
+.cc-sr-src:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 2px;
+}
+.cc-sr-src-sel {
+  border-color: var(--cc-accent);
+  background: color-mix(in srgb, var(--cc-accent) 14%, var(--cc-surface));
+}
+.cc-sr-src-t {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cc-text);
+  margin-bottom: 1px;
+}
+.cc-sr-src-sel .cc-sr-src-t {
+  color: var(--cc-accent);
+}
+.cc-sr-src-d {
+  display: block;
+  font-size: 11px;
+}
+.cc-sr-hint {
+  font-size: 11.5px;
+  color: var(--cc-text-faint);
+  min-height: 15px;
+}
+
+.cc-sr-engine {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cc-sr-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cc-sr-note {
+  font-size: 11.5px;
+  color: var(--cc-text-muted);
+}
+.cc-sr-ta {
+  font-size: 12px;
+  resize: vertical;
+}
+.cc-sr-mono {
+  font-family: var(--cc-mono);
+}
+.cc-sr-optin,
+.cc-sr-ready {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--cc-bg);
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.cc-sr-optin .cc-input {
+  flex: 1;
+  min-width: 180px;
+  width: auto;
+}
+
+/* thinking spinner */
+.cc-sr-thinking {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--cc-text-muted);
+  font-size: 12px;
+}
+.cc-sr-spin {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border: 2px solid var(--cc-border);
+  border-top-color: var(--cc-accent);
+  border-radius: 50%;
+  animation: cc-sr-spin 0.8s linear infinite;
+}
+@keyframes cc-sr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* proposal: diff + verdict + actions */
+.cc-sr-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cc-sr-diff {
+  background: var(--cc-bg);
+  border: 1px solid var(--cc-border);
+  border-radius: 7px;
+  overflow: hidden;
+  font-family: var(--cc-mono);
+  font-size: 12px;
+}
+.cc-sr-ln {
+  display: flex;
+  gap: 10px;
+  padding: 5px 11px;
+  white-space: pre;
+  overflow-x: auto;
+}
+.cc-sr-sgn {
+  flex: none;
+  width: 10px;
+}
+.cc-sr-del {
+  background: color-mix(in srgb, var(--cc-danger) 14%, transparent);
+  color: var(--cc-danger);
+}
+.cc-sr-add {
+  background: color-mix(in srgb, var(--cc-ok) 14%, transparent);
+  color: var(--cc-ok);
+}
+.cc-sr-valid {
+  font-family: var(--cc-mono);
+  font-size: 12px;
+  color: var(--cc-ok);
+}
+.cc-sr-warn {
+  font-size: 11.5px;
+  color: var(--cc-gold);
+}
+
+/* healed state */
+.cc-sr-done {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--cc-ok) 14%, var(--cc-surface));
+  border: 1px solid color-mix(in srgb, var(--cc-ok) 40%, transparent);
+  border-radius: 8px;
+  padding: 11px 13px;
+  font-size: 12.5px;
+}
+
+/* probe flash — decorations outline on claude's matched elements (repair
+ * probe). Additive class, removed by DecorationsService after ~2.4 s. */
+.cc-probe-flash {
+  outline: 2px solid var(--cc-accent) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+  animation: cc-probe-pulse 0.8s ease-in-out 2;
+}
+@keyframes cc-probe-pulse {
+  50% {
+    outline-color: var(--cc-gold);
+    outline-offset: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-sr-spin,
+  .cc-probe-flash {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+ * Claude Code bridge — composer session chip, send popover, gear pairing.
+ * The composer chip lives in #cc-composer-grp (INSIDE claude's composer row,
+ * OUTSIDE #cc-root), so — like .cc-inline-btn — its tokens resolve from
+ * html/:root with var() fallbacks. The send popover + gear rows live under
+ * #cc-root, where the tokens always resolve.
+ * ======================================================================== */
+
+/* ---- composer session chip (spec §4) ---- */
+.cc-ccb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--cc-border, hsl(0 0% 100% / 0.14));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cc-text-muted, hsl(0 0% 62%));
+  font: 600 12px var(--cc-sans, system-ui, sans-serif);
+  cursor: pointer;
+  max-width: 220px;
+}
+.cc-ccb-chip:hover {
+  background: var(--cc-surface-raised, hsl(0 0% 50% / 0.16));
+  color: var(--cc-text, inherit);
+}
+.cc-ccb-chip:focus-visible {
+  outline: 2px solid var(--cc-accent, hsl(15 63% 60%));
+  outline-offset: 1px;
+}
+.cc-ccb-dot {
+  color: var(--cc-ok, hsl(95 30% 55%));
+  font-size: 12px;
+  line-height: 1;
+}
+/* Paired but no live session — dashed outline, grey dot, still clickable
+   (click = rescan). The chip being visible-but-muted IS the signal. */
+.cc-ccb-chip.cc-ccb-idle {
+  border-style: dashed;
+  color: var(--cc-text-faint, hsl(0 0% 47%));
+}
+.cc-ccb-chip.cc-ccb-idle .cc-ccb-dot {
+  color: var(--cc-text-faint, hsl(0 0% 47%));
+}
+.cc-ccb-chip.cc-ccb-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.cc-ccb-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-ccb-caret {
+  color: var(--cc-text-faint, hsl(0 0% 47%));
+  font-size: 10px;
+}
+
+/* ---- session dropdown (listbox under #cc-root) ---- */
+.cc-ccb-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+  max-width: 360px;
+  padding: 5px;
+  z-index: 46; /* Z.popover */
+}
+.cc-ccb-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.cc-ccb-opt:hover,
+.cc-ccb-opt:focus-visible {
+  background: var(--cc-surface-raised);
+  outline: none;
+}
+.cc-ccb-opt.cc-sel {
+  background: color-mix(in srgb, var(--cc-accent) 16%, transparent);
+}
+.cc-ccb-opt-name {
+  font: 600 12.5px var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+}
+.cc-ccb-opt-sub {
+  font: 400 10.5px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- send button inert state (answer toolbar) ---- */
+.cc-atb-btn.cc-atb-inert {
+  opacity: 0.4;
+  cursor: default;
+}
+.cc-atb-btn.cc-atb-inert:hover {
+  background: transparent;
+  border-color: transparent;
+  color: var(--cc-text-muted);
+}
+
+/* ---- send popover (answer toolbar → Claude Code) ---- */
+.cc-send-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 290px;
+  max-width: calc(100vw - 24px);
+  padding: 13px;
+  z-index: 46; /* Z.popover */
+}
+.cc-send-title {
+  font: 700 13px var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+}
+.cc-send-target {
+  font: 500 11px var(--cc-mono, monospace);
+  color: var(--cc-text-muted);
+  word-break: break-all;
+}
+.cc-send-sub {
+  font: 600 10px var(--cc-mono, monospace);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+  margin-top: 2px;
+}
+.cc-send-scope {
+  width: 100%;
+}
+.cc-send-handles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cc-send-handle {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 9px;
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.cc-send-handle:hover {
+  background: var(--cc-surface-raised);
+}
+.cc-send-handle:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 1px;
+}
+.cc-send-handle[aria-checked="true"] {
+  border-color: color-mix(in srgb, var(--cc-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--cc-accent) 12%, transparent);
+}
+.cc-send-handle-name {
+  font: 600 12.5px var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+}
+.cc-send-handle-hint {
+  font: 400 11px var(--cc-sans, sans-serif);
+  color: var(--cc-text-muted);
+}
+.cc-send-pickup {
+  font: 400 11px/1.5 var(--cc-sans, sans-serif);
+  color: var(--cc-text-faint);
+}
+.cc-send-status {
+  min-height: 14px;
+  font: 500 11.5px var(--cc-sans, sans-serif);
+  color: var(--cc-text-muted);
+}
+.cc-send-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.cc-send-go {
+  background: var(--cc-accent);
+  border-color: var(--cc-accent);
+  color: #fff;
+}
+.cc-send-go:hover {
+  filter: brightness(1.08);
+}
+.cc-send-go[disabled] {
+  opacity: 0.5;
+  cursor: default;
+  filter: none;
+}
+
+/* ---- gear pairing + status zone ---- */
+.cc-ccb-status {
+  font: 500 12px var(--cc-sans, sans-serif);
+  color: var(--cc-text-muted);
+}
+.cc-ccb-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cc-ccb-roster:empty {
+  display: none;
+}
+.cc-ccb-roster-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--cc-surface-raised);
+  font: 500 11.5px var(--cc-mono, monospace);
+  color: var(--cc-text);
+}
+.cc-ccb-roster-row::before {
+  content: "◍";
+  color: var(--cc-ok, hsl(95 30% 55%));
+}
+.cc-ccb-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cc-ccb-pair-title {
+  font: 700 12.5px var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+}
+.cc-ccb-pair-body {
+  font: 400 11.5px var(--cc-sans, sans-serif);
+  line-height: 1.45;
+  color: var(--cc-text-muted);
+}
+.cc-ccb-cmd {
+  display: block;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: var(--cc-bg);
+  border: 1px solid var(--cc-border);
+  font: 500 11px var(--cc-mono, monospace);
+  color: var(--cc-text);
+  word-break: break-all;
+  user-select: all;
+  cursor: copy;
+  transition: border-color 0.15s;
+}
+.cc-ccb-cmd:hover {
+  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-ccb-cmd {
+    transition: none;
+  }
+}
+.cc-ccb-msg {
+  min-height: 12px;
+  font: 500 11px var(--cc-sans, sans-serif);
+  color: var(--cc-text-muted);
+}
+.cc-ccb-connect,
+.cc-ccb-forget {
+  align-self: flex-start;
+}
+
+/* ---- Claude Code zone: status header, pairing wizard, commands drawer ---- */
+.cc-ccb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.cc-ccb-head .cc-ccb-status {
+  flex: 1;
+  min-width: 0;
+}
+.cc-ccb-head-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cc-text-faint);
+}
+.cc-ccb-dot-on {
+  background: var(--cc-ok, hsl(95 20% 50%));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--cc-ok, hsl(95 20% 50%)) 55%, transparent);
+}
+.cc-ccb-dot-idle {
+  background: var(--cc-gold);
+}
+.cc-ccb-dot-off {
+  background: var(--cc-text-faint);
+}
+.cc-ccb-rescan {
+  flex: none;
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 500 10.5px var(--cc-sans, sans-serif);
+  padding: 2px 9px;
+  cursor: pointer;
+}
+.cc-ccb-rescan:hover {
+  color: var(--cc-text);
+  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+}
+.cc-ccb-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+}
+.cc-ccb-step-n {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cc-accent) 18%, transparent);
+  color: var(--cc-accent);
+  font: 700 10px/17px var(--cc-sans, sans-serif);
+  text-align: center;
+}
+.cc-ccb-step-l {
+  font: 600 11.5px var(--cc-sans, sans-serif);
+  color: var(--cc-text);
+}
+.cc-ccb-step-b {
+  margin: 5px 0 0 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cc-ccb-note {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+  font: 10.5px/1.5 var(--cc-sans, sans-serif);
+  color: var(--cc-text-faint);
+}
+.cc-ccb-note .cc-ccb-cmd {
+  margin-top: 5px;
+}
+.cc-ccb-drawer-t {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font: 500 11px var(--cc-sans, sans-serif);
+  text-align: left;
+  cursor: pointer;
+}
+.cc-ccb-drawer-t:hover {
+  background: var(--cc-surface-raised);
+  color: var(--cc-text);
+}
+.cc-ccb-drawer-t[aria-expanded="true"] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.cc-ccb-drawer {
+  border: 1px solid var(--cc-border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 9px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.cc-ccb-cmdrow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cc-ccb-cmdrow-l {
+  font: 500 10.5px var(--cc-sans, sans-serif);
+  color: var(--cc-text-muted);
+}
+.cc-ccb-forget {
+  margin-top: 8px;
+}

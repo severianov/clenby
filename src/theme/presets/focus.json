@@ -1,0 +1,97 @@
+{
+  "id": "focus",
+  "name": "Focus",
+  "swatch": "#4a4a44",
+  "swatchFg": "#e9e7e1",
+  "style": "card",
+  "typography": {
+    "bodySizePx": 18,
+    "lineHeight": 1.8,
+    "userSizePx": 16.5,
+    "paragraphGapEm": 1.25
+  },
+  "layout": {
+    "columnMaxRem": 46,
+    "messageGapRem": 1.75,
+    "sidebarRestOpacity": 0.12
+  },
+  "modes": {
+    "dark": {
+      "claude": {
+        "bg": [
+          null,
+          "60 4% 6%",
+          null,
+          null,
+          null,
+          null
+        ],
+        "text": [
+          null,
+          "60 20% 99%",
+          null,
+          null,
+          null
+        ],
+        "pageBg": "60 4% 6%",
+        "cardBg": "60 3% 12%",
+        "cardBorder": "60 4% 18%"
+      },
+      "companion": {
+        "bg": "60 4% 5%",
+        "surface": "60 3% 11%",
+        "surfaceRaised": "60 3% 15%",
+        "surfaceRaised2": "60 3% 19%",
+        "barBg": "60 3% 8% / 0.94",
+        "text": "60 10% 92%",
+        "textMuted": "60 5% 65%",
+        "textFaint": "60 4% 46%",
+        "border": "60 20% 95% / 0.14",
+        "accent": "15 63% 60%",
+        "danger": "0 72% 62%",
+        "gold": "46 74% 66%",
+        "ok": "95 20% 50%",
+        "shadow": "0 10px 34px rgba(0,0,0,.55)"
+      }
+    },
+    "light": {
+      "claude": {
+        "bg": [
+          null,
+          "50 30% 93%",
+          null,
+          null,
+          null,
+          null
+        ],
+        "text": [
+          null,
+          "30 25% 12%",
+          null,
+          null,
+          null
+        ],
+        "pageBg": "50 30% 93%",
+        "cardBg": "0 0% 100%",
+        "cardBorder": "50 18% 85%",
+        "cardShadow": "0 2px 14px rgba(0,0,0,.05)"
+      },
+      "companion": {
+        "bg": "50 30% 93%",
+        "surface": "0 0% 100%",
+        "surfaceRaised": "50 25% 96%",
+        "surfaceRaised2": "50 20% 92%",
+        "barBg": "50 22% 90% / 0.96",
+        "text": "30 25% 14%",
+        "textMuted": "30 12% 38%",
+        "textFaint": "30 8% 48%",
+        "border": "30 20% 10% / 0.14",
+        "accent": "15 68% 42%",
+        "danger": "0 72% 45%",
+        "gold": "40 85% 32%",
+        "ok": "95 30% 33%",
+        "shadow": "0 10px 34px rgba(0,0,0,.16)"
+      }
+    }
+  }
+}

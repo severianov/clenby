@@ -1,0 +1,30 @@
+{
+  "//": "Standalone strict config. When WXT is installed, `wxt prepare` generates .wxt/tsconfig.json with extension/env types; you may switch to `extends: ./.wxt/tsconfig.json`. This file is kept self-contained so `tsc --noEmit` works even before wxt prepare has run.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "entrypoints", "wxt.config.ts", "tests"],
+  "exclude": ["node_modules", ".output", ".wxt"]
+}

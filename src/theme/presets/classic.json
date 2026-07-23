@@ -1,0 +1,72 @@
+{
+  "id": "classic",
+  "name": "Classic+",
+  "swatch": "#c2c0b6",
+  "swatchFg": "#2a2820",
+  "style": "default",
+  "typography": {
+    "bodySizePx": 16.5,
+    "lineHeight": 1.72,
+    "paragraphGapEm": 1.05,
+    "headingGapTopEm": 1.6,
+    "headingGapBottomEm": 0.6,
+    "headingLetterSpacingEm": -0.01
+  },
+  "layout": {},
+  "modes": {
+    "dark": {
+      "claude": {
+        "userBubbleBg": "60 2% 21%",
+        "userBubbleBorder": "60 3% 26%",
+        "codeBlockBg": "60 2% 8%",
+        "codeBlockBorder": "60 3% 24%",
+        "inlineCode": {
+          "fg": "15 60% 75%"
+        }
+      },
+      "companion": {
+        "bg": "240 4% 8%",
+        "surface": "240 4% 12%",
+        "surfaceRaised": "240 4% 16%",
+        "surfaceRaised2": "240 4% 20%",
+        "barBg": "240 5% 8% / 0.93",
+        "text": "60 5% 87%",
+        "textMuted": "0 0% 67%",
+        "textFaint": "0 0% 47%",
+        "border": "0 0% 100% / 0.14",
+        "accent": "15 63% 60%",
+        "danger": "0 72% 62%",
+        "gold": "46 74% 66%",
+        "ok": "95 20% 50%",
+        "shadow": "0 10px 34px rgba(0,0,0,.5)"
+      }
+    },
+    "light": {
+      "claude": {
+        "userBubbleBg": "50 22% 92%",
+        "userBubbleBorder": "50 16% 82%",
+        "codeBlockBg": "50 20% 94%",
+        "codeBlockBorder": "50 12% 84%",
+        "inlineCode": {
+          "fg": "15 75% 38%"
+        }
+      },
+      "companion": {
+        "bg": "48 33% 97%",
+        "surface": "0 0% 100%",
+        "surfaceRaised": "48 20% 94%",
+        "surfaceRaised2": "48 16% 90%",
+        "barBg": "48 20% 94% / 0.96",
+        "text": "43 8% 22%",
+        "textMuted": "40 5% 39%",
+        "textFaint": "40 4% 50%",
+        "border": "0 0% 0% / 0.14",
+        "accent": "15 68% 42%",
+        "danger": "0 72% 45%",
+        "gold": "40 85% 32%",
+        "ok": "95 30% 33%",
+        "shadow": "0 10px 34px rgba(0,0,0,.18)"
+      }
+    }
+  }
+}

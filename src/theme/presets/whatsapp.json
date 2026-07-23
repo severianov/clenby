@@ -1,0 +1,121 @@
+{
+  "id": "whatsapp",
+  "name": "Chat",
+  "swatch": "#00a884",
+  "swatchFg": "#04231c",
+  "style": "bubbles",
+  "typography": {
+    "bodyFontVar": "--font-anthropic-sans",
+    "bodySizePx": 14.5,
+    "lineHeight": 1.55,
+    "userSizePx": 14.5,
+    "userLineHeight": 1.5,
+    "paragraphGapEm": 0.7,
+    "headingGapTopEm": 1,
+    "headingGapBottomEm": 0.4
+  },
+  "layout": {
+    "columnMaxRem": 52,
+    "messageGapRem": 0.6
+  },
+  "modes": {
+    "dark": {
+      "claude": {
+        "bg": [
+          "202 25% 15%",
+          "203 30% 7%",
+          "203 30% 6%",
+          "167 100% 18%",
+          null,
+          null
+        ],
+        "text": [
+          "200 18% 93%",
+          "200 18% 92%",
+          "202 11% 58%",
+          null,
+          null
+        ],
+        "pageBg": "203 30% 7%",
+        "sidebarBg": "202 28% 10%",
+        "sidebarBorder": "202 20% 18%",
+        "bodyText": "200 18% 92%",
+        "link": "167 100% 42%",
+        "inlineCode": {
+          "fg": "167 70% 65%",
+          "bg": "203 30% 10%"
+        },
+        "codeBlockBg": "203 30% 9%",
+        "codeBlockBorder": "202 20% 20%",
+        "userText": "160 25% 95%",
+        "userBubbleBg": "167 100% 18%",
+        "assistantBubbleBg": "202 25% 16%"
+      },
+      "companion": {
+        "bg": "203 30% 6%",
+        "surface": "202 26% 12%",
+        "surfaceRaised": "202 25% 16%",
+        "surfaceRaised2": "202 24% 20%",
+        "barBg": "202 26% 10% / 0.94",
+        "text": "200 18% 92%",
+        "textMuted": "202 11% 62%",
+        "textFaint": "202 10% 45%",
+        "border": "200 30% 90% / 0.14",
+        "accent": "167 100% 36%",
+        "danger": "0 72% 62%",
+        "gold": "46 74% 66%",
+        "ok": "95 20% 50%",
+        "shadow": "0 10px 34px rgba(0,0,0,.55)"
+      }
+    },
+    "light": {
+      "claude": {
+        "bg": [
+          "0 0% 100%",
+          "36 22% 91%",
+          "36 20% 88%",
+          "105 55% 91%",
+          null,
+          null
+        ],
+        "text": [
+          "0 0% 7%",
+          "0 0% 9%",
+          "0 0% 35%",
+          null,
+          null
+        ],
+        "pageBg": "36 22% 91%",
+        "sidebarBg": "#ffffff",
+        "sidebarBorder": "#dddddd",
+        "bodyText": "#111111",
+        "link": "#026d9d",
+        "inlineCode": {
+          "fg": "167 85% 22%",
+          "bg": "105 30% 88%"
+        },
+        "codeBlockBg": "#f0f0f0",
+        "codeBlockBorder": "#dddddd",
+        "userText": "#111111",
+        "userBubbleBg": "105 55% 91%",
+        "assistantBubbleBg": "#ffffff"
+      },
+      "companion": {
+        "bg": "36 22% 91%",
+        "surface": "0 0% 100%",
+        "surfaceRaised": "36 20% 95%",
+        "surfaceRaised2": "36 18% 87%",
+        "barBg": "36 20% 95% / 0.96",
+        "text": "0 0% 9%",
+        "textMuted": "0 0% 35%",
+        "textFaint": "0 0% 46%",
+        "border": "0 0% 0% / 0.14",
+        "accent": "167 85% 24%",
+        "danger": "0 72% 45%",
+        "gold": "40 85% 32%",
+        "ok": "95 30% 33%",
+        "shadow": "0 10px 34px rgba(0,0,0,.16)"
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "clenby-bridge",
+  "version": "0.1.0",
+  "description": "Loopback MCP bridge between a claude.ai conversation (Clenby extension) and a local Claude Code session.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "clenby-bridge": "index.js"
+  },
+  "engines": {
+    "node": ">=18.14.1"
+  },
+  "files": [
+    "index.js",
+    "src/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "ws": "8.21.1"
+  }
+}

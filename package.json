@@ -1,0 +1,28 @@
+{
+  "name": "clenby",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The experience layer for AI chats — starting with claude.ai. Self-healing, open source.",
+  "engines": {
+    "node": ">=23.6"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "postbuild": "rm -rf chrome-extension-build && cp -R .output/chrome-mv3 chrome-extension-build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "prepare": "wxt prepare",
+    "compile": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "test": "node --test --import ./tests/_alias.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "wxt": "^0.19.13"
+  }
+}

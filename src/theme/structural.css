@@ -1,0 +1,93 @@
+/*
+ * Static CSS for the structural theme variants, keyed on
+ * html[data-cc-style]. Variants read tokens for all colors/sizes — the --ccs-*
+ * custom props are emitted per-mode by compile.ts; this file never hardcodes a
+ * theme color.
+ *
+ * Injected once as <style id="cc-structural"> by the theme engine, before the
+ * per-theme <style id="cc-theme">.
+ */
+
+/* ---- header-fade fix ------------------------------------------------------
+ * The header fade overlay is a dark gradient band on light themes. When a
+ * theme is active (html.cc-themed) the fade follows the theme's page color
+ * via --cc-page. Theme "Off" never sets cc-themed, so stock claude.ai keeps
+ * its own fade. */
+html.cc-themed main [class*="bg-gradient-to-b"][class*="-bottom-6"] {
+  background-image: linear-gradient(var(--cc-page, #0000) 66.67%, #0000 100%) !important;
+}
+
+/* ---- "bubbles" variant (WhatsApp) ---------------------------------------- */
+html[data-cc-style="bubbles"] .font-claude-response {
+  background: var(--ccs-assistant-bubble) !important;
+  border-radius: 14px 14px 14px 4px !important;
+  padding: 12px 16px !important;
+  max-width: 88% !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+html[data-cc-style="bubbles"] .bg-bg-300 {
+  background: var(--ccs-user-bubble-bg) !important;
+  border: none !important;
+  border-radius: 14px 14px 4px 14px !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+/* ---- "card" variant (Focus) ---------------------------------------------- */
+html[data-cc-style="card"] main .max-w-3xl {
+  background: var(--ccs-card-bg) !important;
+  border: 1px solid var(--ccs-card-border);
+  border-radius: 18px;
+  padding: 1.75rem 3rem !important;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  box-shadow: var(--ccs-card-shadow, none);
+}
+
+/* ---- "editor" variant (Code / VS Code) ----------------------------------- */
+html[data-cc-style="editor"] .bg-bg-300 {
+  background: var(--ccs-user-bubble-bg) !important;
+  border: none !important;
+  border-left: 3px solid var(--ccs-user-bubble-border) !important;
+  border-radius: 6px !important;
+}
+
+/* ---- True Black chrome fixes (theme-keyed static CSS, not preset data) ----
+ * Matches the live site's computed styles: sidebar + pill chrome resist var
+ * overrides, and the companion stays dark in BOTH modes by design. */
+html[data-cc-theme="true-black"] .df-pills {
+  background: hsl(0 0% 100% / 0.04) !important;
+}
+html[data-cc-theme="true-black"] .df-pill-indicator {
+  background: hsl(0 0% 16%) !important;
+}
+html[data-cc-theme="true-black"] .df-pills,
+html[data-cc-theme="true-black"] .df-pills * {
+  color: hsl(0 0% 78%) !important;
+}
+html[data-cc-theme="true-black"] .df-new-circle {
+  background: hsl(0 0% 14%) !important;
+  color: hsl(0 0% 78%) !important;
+  border: 1px solid hsl(0 0% 24%) !important;
+}
+html[data-cc-theme="true-black"] aside.dframe-sidebar * {
+  color: hsl(60 5% 80%);
+}
+html[data-cc-theme="true-black"] aside [class*="--df-radius-pill"] {
+  background-color: transparent !important;
+}
+html[data-cc-theme="true-black"] aside [class*="--df-radius-pill"]:hover {
+  background-color: hsl(0 0% 12%) !important;
+}
+html[data-cc-theme="true-black"] aside a[aria-current] [class*="--df-radius-pill"],
+html[data-cc-theme="true-black"] aside [aria-selected="true"],
+html[data-cc-theme="true-black"] aside [data-active="true"] {
+  background-color: hsl(0 0% 14%) !important;
+}
+html[data-cc-theme="true-black"] aside.dframe-sidebar button,
+html[data-cc-theme="true-black"] aside.dframe-sidebar a,
+html[data-cc-theme="true-black"] aside.dframe-sidebar span {
+  color: hsl(0 0% 74%);
+}
+html[data-cc-theme="true-black"] aside.dframe-sidebar [class*="text-text"] {
+  color: hsl(0 0% 74%) !important;
+}

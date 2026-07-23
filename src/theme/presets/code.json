@@ -1,0 +1,100 @@
+{
+  "id": "code",
+  "name": "Code",
+  "swatch": "#007acc",
+  "swatchFg": "#eaf6ff",
+  "style": "editor",
+  "typography": {
+    "bodyFontVar": "'Cascadia Code','Fira Code',Consolas,'DejaVu Sans Mono',monospace",
+    "bodySizePx": 13.5,
+    "lineHeight": 1.65,
+    "userSizePx": 13,
+    "paragraphGapEm": 0.8,
+    "headingGapTopEm": 1.2,
+    "headingGapBottomEm": 0.4
+  },
+  "layout": {
+    "columnMaxRem": 54,
+    "messageGapRem": 0.75
+  },
+  "modes": {
+    "dark": {
+      "claude": {
+        "pageBg": "#1e1e1e",
+        "paint": {
+          "bg000": "#252526"
+        },
+        "sidebarBg": "#252526",
+        "sidebarBorder": "#191919",
+        "bodyText": "#d4d4d4",
+        "heading": "#569cd6",
+        "strong": "#dcdcaa",
+        "link": "#4fc1ff",
+        "inlineCode": {
+          "fg": "#ce9178",
+          "bg": "#2d2d30"
+        },
+        "userText": "#d4d4d4",
+        "userBubbleBg": "#2d2d30",
+        "userBubbleBorder": "#007acc",
+        "codeBlockBg": "#252526",
+        "codeBlockBorder": "#333333"
+      },
+      "companion": {
+        "bg": "#1e1e1e",
+        "surface": "#252526",
+        "surfaceRaised": "#2d2d30",
+        "surfaceRaised2": "#37373b",
+        "barBg": "rgba(45,45,48,.94)",
+        "text": "#d4d4d4",
+        "textMuted": "#9d9d9d",
+        "textFaint": "#858585",
+        "border": "0 0% 100% / 0.12",
+        "accent": "207 100% 55%",
+        "danger": "0 72% 62%",
+        "gold": "54 60% 60%",
+        "ok": "95 20% 50%",
+        "shadow": "0 10px 34px rgba(0,0,0,.55)"
+      }
+    },
+    "light": {
+      "claude": {
+        "pageBg": "#ffffff",
+        "paint": {
+          "bg000": "#f3f3f3"
+        },
+        "sidebarBg": "#f3f3f3",
+        "sidebarBorder": "#e5e5e5",
+        "bodyText": "#1f1f1f",
+        "heading": "#0070c1",
+        "strong": "#795e26",
+        "link": "#006ab1",
+        "inlineCode": {
+          "fg": "#a31515",
+          "bg": "#f5f5f5"
+        },
+        "userText": "#1f1f1f",
+        "userBubbleBg": "#f3f3f3",
+        "userBubbleBorder": "#007acc",
+        "codeBlockBg": "#f8f8f8",
+        "codeBlockBorder": "#e0e0e0"
+      },
+      "companion": {
+        "bg": "#ffffff",
+        "surface": "#f3f3f3",
+        "surfaceRaised": "#e8e8e8",
+        "surfaceRaised2": "#dddddd",
+        "barBg": "rgba(226,226,226,.96)",
+        "text": "#1f1f1f",
+        "textMuted": "#525252",
+        "textFaint": "#767676",
+        "border": "0 0% 0% / 0.14",
+        "accent": "207 100% 38%",
+        "danger": "0 72% 45%",
+        "gold": "45 95% 28%",
+        "ok": "95 25% 38%",
+        "shadow": "0 10px 34px rgba(0,0,0,.14)"
+      }
+    }
+  }
+}

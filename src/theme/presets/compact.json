@@ -1,0 +1,91 @@
+{
+  "id": "compact",
+  "name": "Compact",
+  "swatch": "#7b8494",
+  "swatchFg": "#12151b",
+  "style": "default",
+  "typography": {
+    "bodyFontVar": "--font-anthropic-sans",
+    "bodySizePx": 13.5,
+    "lineHeight": 1.5,
+    "userSizePx": 13,
+    "userLineHeight": 1.45,
+    "codeSizePx": 12,
+    "paragraphGapEm": 0.5,
+    "headingGapTopEm": 0.9,
+    "headingGapBottomEm": 0.3
+  },
+  "layout": {
+    "columnMaxRem": 60,
+    "messageGapRem": 0.4,
+    "bubblePaddingY": ".3rem"
+  },
+  "modes": {
+    "dark": {
+      "claude": {
+        "bg": [
+          "220 6% 15%",
+          "220 7% 10%",
+          "220 7% 8%",
+          "220 6% 14%",
+          "220 7% 6%",
+          "220 7% 6%"
+        ],
+        "pageBg": "220 7% 10%",
+        "messageDivider": "220 6% 18%",
+        "inlineCode": {
+          "fg": "190 70% 70%"
+        }
+      },
+      "companion": {
+        "bg": "220 7% 8%",
+        "surface": "220 6% 13%",
+        "surfaceRaised": "220 6% 17%",
+        "surfaceRaised2": "220 6% 21%",
+        "barBg": "220 6% 10% / 0.93",
+        "text": "220 10% 88%",
+        "textMuted": "220 6% 65%",
+        "textFaint": "220 5% 48%",
+        "border": "220 30% 90% / 0.14",
+        "accent": "190 70% 55%",
+        "danger": "0 72% 62%",
+        "gold": "46 74% 66%",
+        "ok": "95 20% 50%",
+        "shadow": "0 10px 34px rgba(0,0,0,.5)"
+      }
+    },
+    "light": {
+      "claude": {
+        "bg": [
+          "220 30% 100%",
+          "220 30% 97%",
+          "220 25% 94%",
+          "220 20% 93%",
+          "220 18% 90%",
+          "220 18% 90%"
+        ],
+        "pageBg": "220 30% 97%",
+        "messageDivider": "220 15% 88%",
+        "inlineCode": {
+          "fg": "190 85% 28%"
+        }
+      },
+      "companion": {
+        "bg": "220 30% 97%",
+        "surface": "0 0% 100%",
+        "surfaceRaised": "220 25% 94%",
+        "surfaceRaised2": "220 20% 90%",
+        "barBg": "220 25% 94% / 0.96",
+        "text": "220 15% 20%",
+        "textMuted": "220 8% 42%",
+        "textFaint": "220 6% 50%",
+        "border": "220 20% 10% / 0.14",
+        "accent": "190 90% 27%",
+        "danger": "0 72% 45%",
+        "gold": "40 85% 32%",
+        "ok": "95 30% 33%",
+        "shadow": "0 10px 34px rgba(0,0,0,.14)"
+      }
+    }
+  }
+}

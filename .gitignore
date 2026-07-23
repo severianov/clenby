@@ -1,0 +1,22 @@
+# Machine-local Claude Code settings (permissions etc.) — never shared.
+# .claude/commands/ IS tracked: project slash commands ship with the repo.
+.claude/settings.local.json
+
+# Dependencies & build output
+node_modules/
+.output/
+.wxt/
+chrome-extension-build/
+*.zip
+*.log
+stats.html
+.DS_Store
+
+# Internal — working docs, roadmap, strategy, design artifacts, private data.
+# Never publish; keeps the public repo to just the product.
+internal/
+CLAUDE.md
+
+# Website — its own separate repo, kept here for convenience only.
+# Never tracked by the extension repo.
+website/
