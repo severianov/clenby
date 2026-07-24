@@ -10,11 +10,11 @@ jobs:
     name: Typecheck & build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Node ≥23.6 matches the root engines field (node --test runs the .ts
       # test files via native type stripping, stable from 23.6).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -35,11 +35,11 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # node --test executes the TypeScript test files directly via Node's
       # native type stripping, which needs a newer Node than the build job.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -65,9 +65,9 @@ jobs:
       run:
         working-directory: bridge
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
 
