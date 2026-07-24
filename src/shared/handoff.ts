@@ -38,7 +38,10 @@ export type HandoffScope =
   // wraps it in the standard fenced envelope.
   | "pins"
   | "highlights"
-  | "notes";
+  | "notes"
+  // "answers" is the export panel's "Only Claude’s answers" Send row — a
+  // prebuilt claude-only body, enveloped like the collection scopes above.
+  | "answers";
 
 /**
  * The pre-prompt paragraph written immediately under the frontmatter, before

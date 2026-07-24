@@ -28,14 +28,20 @@
  *   one click from closed, right on the message it came from.
  * - Add to note→ bus "ui:note-append" (the notes feature files the snippet as
  *   a new note for this conversation).
- * - Send to Claude Code → opens a handle/scope popover and, on confirm, emits
- *   bus "bridge:send"; the claude-code-bridge feature assembles + pushes over
- *   the loopback WS (features never import each other). The button is INERT
- *   until ≥1 Claude Code session connects ("Start Claude Code and this lights
- *   up." — spec §3); it reflects live/inert off "bridge:changed".
+ * - Send to Claude Code → sends THIS answer straight to Claude Code: one click
+ *   emits bus "bridge:send" with scope "answer", the neutral "context" handle,
+ *   and a fresh reqId (no popover, no scope chooser — whole-chat / answers-only
+ *   sends live in the gear Export section). The claude-code-bridge feature
+ *   assembles + pushes over the loopback WS (features never import each other),
+ *   then answers on "bridge:send-result"; the pressed button shows an immediate
+ *   busy face, then a ✓ + success pulse (or the red treatment) matched back by
+ *   reqId. INERT until ≥1 Claude Code session connects ("Start Claude Code and
+ *   this lights up." — spec §3); it reflects live/inert off "bridge:changed".
  *
- * Click feedback: a brief ✓ (ok) / danger tint flash on the pressed button.
- * The flash is self-healing by construction — the resting face is DERIVED
+ * Click feedback: a brief ✓ (ok) / danger tint flash on the pressed button; a
+ * successful send additionally plays the shared cc-sent-pulse success animation
+ * (companion.css), the same one every send surface uses. The flash is
+ * self-healing by construction — the resting face is DERIVED
  * (per-action icon; pin also derives label + active class from the pinned
  * set), never saved-and-restored, so a re-flash mid-flash or a React
  * detach/reattach can never strand a button in the flashed state. A
@@ -59,15 +65,17 @@
  */
 
 import type { FeatureContext, FeatureModule } from "@/core/feature";
-import { ownedEl, setGeometry } from "@/ui/root";
+import { ownedEl } from "@/ui/root";
 import { cleanExportBody } from "@/shared/text";
 import type { BridgeSession } from "@/shared/bridge-protocol";
-import type { HandoffScope } from "@/shared/handoff";
 
 const OWNER = "answer-toolbar";
 
 const SWEEP_MS = 900;
 const FLASH_MS = 1400;
+/** How long the cc-sent-pulse class stays applied — a touch past the 250ms CSS
+ *  animation so it plays once, then is cleared by a managed timer. */
+const PULSE_MS = 320;
 const NOTE_SNIPPET_MAX = 700;
 
 // Lucide-style line icons — static, trusted markup (bundled constants,
@@ -241,10 +249,6 @@ export const answerToolbar: FeatureModule = {
     // this toolbar only lights/dims the button and hands off the chosen
     // handle+scope. The send is inert until ≥1 session connects (spec §3).
     let bridgeSessions: BridgeSession[] = [];
-    let bridgeBound: string | null = null;
-
-    const boundBridgeSession = (): BridgeSession | null =>
-      bridgeSessions.find((s) => s.sessionId === bridgeBound) ?? null;
 
     /** send button face: greyed + inert with no session, live otherwise. */
     const paintSend = (btn: HTMLButtonElement): void => {
@@ -260,191 +264,60 @@ export const answerToolbar: FeatureModule = {
       for (const btn of document.querySelectorAll<HTMLButtonElement>(sel)) paintSend(btn);
     };
 
-    // ---- the send popover (one shared instance under #cc-root) ---------------
-    let sendUuid: string | null = null;
-    let sendSelection = "";
-    let currentScope: HandoffScope = "answer";
-    let sending = false;
+    // ---- direct send (no popover) --------------------------------------------
+    // Clicking an answer's send button hands THAT answer to Claude Code
+    // immediately — scope "answer", the neutral "context" handle, a fresh reqId
+    // per click — over the shared bus contract (the claude-code-bridge feature
+    // assembles + pushes; features never import each other). Whole-chat and
+    // answers-only sends live in the gear Export section, not here. Each button
+    // carries its own in-flight reqId in a dataset token, so concurrent sends on
+    // different answers settle independently.
+    const SEND_BUSY_FAILSAFE_MS = 8000;
 
-    const sendPop = ownedEl("div", {
-      owner: OWNER,
-      className: "cc-popover cc-send-pop cc-hidden",
-      attrs: { id: "cc-atb-send-pop", role: "dialog", "aria-label": "Send to Claude Code" },
-    });
-    sendPop.append(
-      ownedEl("div", { owner: OWNER, className: "cc-send-title", text: "Send to Claude Code" }),
-    );
-    const targetLine = ownedEl("div", { owner: OWNER, className: "cc-send-target" });
-    sendPop.append(targetLine);
-    sendPop.append(ownedEl("div", { owner: OWNER, className: "cc-send-sub", text: "What to send" }));
-    const scopeSeg = ownedEl("div", {
-      owner: OWNER,
-      className: "cc-gear-seg cc-send-scope",
-      attrs: { role: "radiogroup", "aria-label": "What to send" },
-    });
-    sendPop.append(scopeSeg);
-    // No intent picker: what happens with the handoff is decided at PICKUP —
-    // `/handoff <anything>` in Claude Code — so sending is a one-decision act.
-    sendPop.append(
-      ownedEl("div", {
-        owner: OWNER,
-        className: "cc-send-pickup",
-        text: "Pick it up in Claude Code with /handoff — tell it there what to do.",
-      }),
-    );
-    const statusLine = ownedEl("div", { owner: OWNER, className: "cc-send-status" });
-    const actionRow = ownedEl("div", { owner: OWNER, className: "cc-send-actions" });
-    const sendCancel = ownedEl("button", {
-      owner: OWNER,
-      className: "cc-btn cc-send-cancel",
-      text: "Cancel",
-      attrs: { type: "button" },
-    });
-    const sendGo = ownedEl("button", {
-      owner: OWNER,
-      className: "cc-btn cc-send-go",
-      text: "Send",
-      attrs: { type: "button" },
-    });
-    actionRow.append(sendCancel, sendGo);
-    sendPop.append(statusLine, actionRow);
-    ctx.root.appendChild(sendPop);
-    ctx.onCleanup(() => sendPop.remove());
-
-    const disambiguated = (s: BridgeSession): boolean =>
-      bridgeSessions.filter((o) => o.project === s.project).length >= 2;
-
-    /** The read-only target line mirroring the chip's binding (spec §4). */
-    const refreshSendTarget = (): void => {
-      const b = boundBridgeSession();
-      if (!b) {
-        targetLine.textContent = "";
-        return;
-      }
-      const who = disambiguated(b) ? `${b.project} · ${b.petname ?? b.shortId}` : b.project;
-      targetLine.textContent = `→ ${who} (${b.path})`;
+    const sendAnswer = (uuid: string, btn: HTMLButtonElement): void => {
+      const reqId = crypto.randomUUID();
+      btn.dataset["ccSendReq"] = reqId;
+      // Immediate "on its way" face — dim + breathe the instant it's clicked,
+      // not when the ack returns (the shared cc-send-busy idiom every send
+      // surface uses).
+      btn.classList.add("cc-send-busy");
+      btn.setAttribute("aria-busy", "true");
+      ctx.bus.emit("bridge:send", { handle: "context", scope: "answer", uuid, reqId });
+      // Failsafe: if no result ever lands (e.g. the tab aborts its push) drop the
+      // busy face so it can never stick. Token-guarded — a newer send on this
+      // same button owns the state.
+      ctx.setTimeout(() => {
+        if (btn.dataset["ccSendReq"] !== reqId) return;
+        delete btn.dataset["ccSendReq"];
+        btn.classList.remove("cc-send-busy");
+        btn.removeAttribute("aria-busy");
+      }, SEND_BUSY_FAILSAFE_MS);
     };
 
-    const renderScope = (): void => {
-      scopeSeg.replaceChildren();
-      const opts: Array<{ scope: HandoffScope; text: string }> = [
-        { scope: "answer", text: "This answer" },
-        { scope: "conversation", text: "Whole chat" },
-      ];
-      if (sendSelection) opts.push({ scope: "selection", text: "Selection" });
-      if (!opts.some((o) => o.scope === currentScope)) currentScope = "answer";
-      for (const o of opts) {
-        const b = ownedEl("button", {
-          owner: OWNER,
-          className: "cc-gear-seg-btn",
-          attrs: {
-            type: "button",
-            role: "radio",
-            "aria-checked": o.scope === currentScope ? "true" : "false",
-            "data-cc-scope": o.scope,
-          },
-        });
-        b.append(ownedEl("span", { owner: OWNER, text: o.text }));
-        scopeSeg.append(b);
-      }
-    };
-
-    const closeSendPop = (): void => {
-      sendPop.classList.add("cc-hidden");
-      sending = false;
-    };
-
-    const openSendPopover = (uuid: string, anchor: HTMLButtonElement): void => {
-      if (bridgeSessions.length === 0) return; // inert (spec §3)
-      sendUuid = uuid;
-      // Capture a text selection that lives inside THIS answer (selection scope).
-      sendSelection = "";
-      const answerEl = ctx.selectors.closest<HTMLElement>("assistantMessage", anchor);
-      const selection = window.getSelection();
-      if (
-        answerEl &&
-        selection &&
-        selection.rangeCount > 0 &&
-        !selection.isCollapsed &&
-        selection.anchorNode &&
-        answerEl.contains(selection.anchorNode)
-      ) {
-        sendSelection = selection.toString().trim();
-      }
-      currentScope = sendSelection ? "selection" : "answer";
-      sending = false;
-      statusLine.textContent = "";
-      statusLine.classList.remove("cc-ok-text", "cc-danger-text");
-      sendGo.removeAttribute("disabled");
-      refreshSendTarget();
-      renderScope();
-      const r = anchor.getBoundingClientRect();
-      setGeometry(sendPop, {
-        top: Math.round(r.bottom + 6),
-        left: Math.round(Math.min(r.left, window.innerWidth - 300)),
-      });
-      sendPop.classList.remove("cc-hidden");
-    };
-
-    const doSend = (): void => {
-      if (sending || bridgeSessions.length === 0) return;
-      sending = true;
-      sendGo.setAttribute("disabled", "true");
-      statusLine.classList.remove("cc-ok-text", "cc-danger-text");
-      statusLine.textContent = "Sending…";
-      ctx.bus.emit("bridge:send", {
-        // Fixed neutral intent — the receiver chooses at pickup (/handoff).
-        handle: "context",
-        scope: currentScope,
-        ...(sendUuid ? { uuid: sendUuid } : {}),
-        ...(currentScope === "selection" ? { selectionText: sendSelection } : {}),
-      });
-    };
-
-    ctx.listen(scopeSeg, "click", (ev: MouseEvent) => {
-      const b = (ev.target instanceof Element ? ev.target : null)?.closest<HTMLElement>("[data-cc-scope]");
-      const scope = b?.dataset["ccScope"] as HandoffScope | undefined;
-      if (!scope) return;
-      currentScope = scope;
-      renderScope();
-    });
-    ctx.listen(sendGo, "click", (ev: MouseEvent) => {
-      ev.stopPropagation();
-      doSend();
-    });
-    ctx.listen(sendCancel, "click", (ev: MouseEvent) => {
-      ev.stopPropagation();
-      closeSendPop();
-    });
-    ctx.listen(document, "mousedown", (ev: MouseEvent) => {
-      if (sendPop.classList.contains("cc-hidden")) return;
-      const t = ev.target;
-      if (t instanceof Element && (t.closest("#cc-atb-send-pop") || t.closest(".cc-atb-btn[data-cc-act='send']"))) {
-        return;
-      }
-      closeSendPop();
-    });
-    ctx.listen(document, "keydown", (ev: KeyboardEvent) => {
-      if (ev.key === "Escape" && !sendPop.classList.contains("cc-hidden")) closeSendPop();
-    });
-
-    ctx.on("bridge:changed", ({ sessions, boundSessionId }) => {
+    ctx.on("bridge:changed", ({ sessions }) => {
       bridgeSessions = sessions;
-      bridgeBound = boundSessionId;
       repaintSends();
-      if (!sendPop.classList.contains("cc-hidden")) {
-        if (bridgeSessions.length === 0) closeSendPop();
-        else refreshSendTarget();
-      }
     });
-    ctx.on("bridge:send-result", ({ ok, reason }) => {
-      if (!sending) return;
-      sending = false;
-      sendGo.removeAttribute("disabled");
-      statusLine.textContent = ok ? "Sent ✓" : reason ?? "nothing sent";
-      statusLine.classList.toggle("cc-ok-text", ok);
-      statusLine.classList.toggle("cc-danger-text", !ok);
-      if (ok) ctx.setTimeout(() => closeSendPop(), 950);
+    ctx.on("bridge:send-result", ({ ok, reqId }) => {
+      // Settle the send button that owns this reqId (per-button dataset token —
+      // supports concurrent sends across answers). A reqId we don't recognise is
+      // another surface's result: four share the contract.
+      if (!reqId) return;
+      const sel = `.cc-atb[data-cc-owner="${OWNER}"] .cc-atb-btn[data-cc-act="send"]`;
+      let btn: HTMLButtonElement | null = null;
+      for (const b of document.querySelectorAll<HTMLButtonElement>(sel)) {
+        if (b.dataset["ccSendReq"] === reqId) {
+          btn = b;
+          break;
+        }
+      }
+      if (!btn) return;
+      delete btn.dataset["ccSendReq"];
+      btn.classList.remove("cc-send-busy");
+      btn.removeAttribute("aria-busy");
+      // ✓ flash + the shared success pulse on success; the red treatment on
+      // failure (flash's third arg gates the pulse to ok sends).
+      flash(btn, ok, ok);
     });
 
     // ---- click feedback flash (robust: supersede + derive + sweep) ------------
@@ -455,20 +328,31 @@ export const answerToolbar: FeatureModule = {
     const clearFlash = (btn: HTMLButtonElement): void => {
       delete btn.dataset["ccFlash"];
       delete btn.dataset["ccFlashUntil"];
-      btn.classList.remove("cc-atb-done", "cc-atb-fail");
+      btn.classList.remove("cc-atb-done", "cc-atb-fail", "cc-sent-pulse");
       restingFace(btn);
+    };
+
+    /** Play the shared "sent ✓" success pulse (companion.css cc-sent-pulse) —
+     *  the same brief scale bump + green glow every send surface uses. Removed
+     *  after the animation window (managed timer); inert under
+     *  prefers-reduced-motion (CSS disables it — the ✓ is the feedback). */
+    const pulseOnce = (btn: HTMLButtonElement): void => {
+      btn.classList.add("cc-sent-pulse");
+      ctx.setTimeout(() => btn.classList.remove("cc-sent-pulse"), PULSE_MS);
     };
 
     /** Brief ✓ (or danger tint) on the pressed button, then ALWAYS back to
      *  the resting face. Re-armable: a new flash stamps a new generation, so
-     *  any pending clear for the old one becomes a no-op. */
-    const flash = (btn: HTMLButtonElement, ok: boolean): void => {
+     *  any pending clear for the old one becomes a no-op. `pulse` adds the
+     *  success animation (send success only — not pin/copy/note). */
+    const flash = (btn: HTMLButtonElement, ok: boolean, pulse = false): void => {
       const gen = String(++flashSeq); // supersedes any pending clear on btn
       btn.dataset["ccFlash"] = gen;
       btn.dataset["ccFlashUntil"] = String(Date.now() + FLASH_MS);
       btn.innerHTML = ICON_CHECK; // static, trusted markup
       btn.classList.remove("cc-atb-done", "cc-atb-fail");
       btn.classList.add(ok ? "cc-atb-done" : "cc-atb-fail");
+      if (ok && pulse) pulseOnce(btn);
       ctx.setTimeout(() => {
         if (btn.dataset["ccFlash"] !== gen) return; // superseded or cleared
         clearFlash(btn); // even if currently detached — see clearFlash
@@ -597,11 +481,12 @@ export const answerToolbar: FeatureModule = {
           break;
         }
         case "send":
-          // Inert until a Claude Code session connects (spec §3). Otherwise
-          // open the handle/scope popover; the claude-code-bridge feature does
-          // the assembly + push (features never import each other).
+          // Inert until a Claude Code session connects (spec §3). Otherwise send
+          // THIS answer straight to Claude Code — no popover, no scope chooser;
+          // the claude-code-bridge feature does the assembly + push (features
+          // never import each other).
           if (bridgeSessions.length === 0) return;
-          openSendPopover(uuid, btn);
+          sendAnswer(uuid, btn);
           break;
       }
     };

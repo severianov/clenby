@@ -51,43 +51,87 @@ html[data-cc-style="editor"] .bg-bg-300 {
   border-radius: 6px !important;
 }
 
-/* ---- True Black chrome fixes (theme-keyed static CSS, not preset data) ----
+/* ---- True B&W chrome fixes (theme-keyed static CSS, not preset data) -------
  * Matches the live site's computed styles: sidebar + pill chrome resist var
- * overrides, and the companion stays dark in BOTH modes by design. */
-html[data-cc-theme="true-black"] .df-pills {
+ * overrides, so they are repainted here. The preset now has a light half
+ * (True White), so every rule is scoped to the EFFECTIVE mode the engine
+ * stamps (html[data-cc-mode]): the dark block below paints the black half,
+ * the mirrored light block paints the white half. Without the scope the dark
+ * grays here would render invisible chrome on the white page. */
+html[data-cc-theme="true-black"][data-cc-mode="dark"] .df-pills {
   background: hsl(0 0% 100% / 0.04) !important;
 }
-html[data-cc-theme="true-black"] .df-pill-indicator {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] .df-pill-indicator {
   background: hsl(0 0% 16%) !important;
 }
-html[data-cc-theme="true-black"] .df-pills,
-html[data-cc-theme="true-black"] .df-pills * {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] .df-pills,
+html[data-cc-theme="true-black"][data-cc-mode="dark"] .df-pills * {
   color: hsl(0 0% 78%) !important;
 }
-html[data-cc-theme="true-black"] .df-new-circle {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] .df-new-circle {
   background: hsl(0 0% 14%) !important;
   color: hsl(0 0% 78%) !important;
   border: 1px solid hsl(0 0% 24%) !important;
 }
-html[data-cc-theme="true-black"] aside.dframe-sidebar * {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside.dframe-sidebar * {
   color: hsl(60 5% 80%);
 }
-html[data-cc-theme="true-black"] aside [class*="--df-radius-pill"] {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside [class*="--df-radius-pill"] {
   background-color: transparent !important;
 }
-html[data-cc-theme="true-black"] aside [class*="--df-radius-pill"]:hover {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside [class*="--df-radius-pill"]:hover {
   background-color: hsl(0 0% 12%) !important;
 }
-html[data-cc-theme="true-black"] aside a[aria-current] [class*="--df-radius-pill"],
-html[data-cc-theme="true-black"] aside [aria-selected="true"],
-html[data-cc-theme="true-black"] aside [data-active="true"] {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside a[aria-current] [class*="--df-radius-pill"],
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside [aria-selected="true"],
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside [data-active="true"] {
   background-color: hsl(0 0% 14%) !important;
 }
-html[data-cc-theme="true-black"] aside.dframe-sidebar button,
-html[data-cc-theme="true-black"] aside.dframe-sidebar a,
-html[data-cc-theme="true-black"] aside.dframe-sidebar span {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside.dframe-sidebar button,
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside.dframe-sidebar a,
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside.dframe-sidebar span {
   color: hsl(0 0% 74%);
 }
-html[data-cc-theme="true-black"] aside.dframe-sidebar [class*="text-text"] {
+html[data-cc-theme="true-black"][data-cc-mode="dark"] aside.dframe-sidebar [class*="text-text"] {
   color: hsl(0 0% 74%) !important;
+}
+
+/* True White half — mirror of the block above: dark chrome text on the white
+ * page, light-gray pill fills / hover / active row. */
+html[data-cc-theme="true-black"][data-cc-mode="light"] .df-pills {
+  background: hsl(0 0% 0% / 0.04) !important;
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] .df-pill-indicator {
+  background: hsl(0 0% 84%) !important;
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] .df-pills,
+html[data-cc-theme="true-black"][data-cc-mode="light"] .df-pills * {
+  color: hsl(0 0% 24%) !important;
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] .df-new-circle {
+  background: hsl(0 0% 96%) !important;
+  color: hsl(0 0% 24%) !important;
+  border: 1px solid hsl(0 0% 80%) !important;
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside.dframe-sidebar * {
+  color: hsl(0 0% 22%);
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside [class*="--df-radius-pill"] {
+  background-color: transparent !important;
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside [class*="--df-radius-pill"]:hover {
+  background-color: hsl(0 0% 93%) !important;
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside a[aria-current] [class*="--df-radius-pill"],
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside [aria-selected="true"],
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside [data-active="true"] {
+  background-color: hsl(0 0% 91%) !important;
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside.dframe-sidebar button,
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside.dframe-sidebar a,
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside.dframe-sidebar span {
+  color: hsl(0 0% 26%);
+}
+html[data-cc-theme="true-black"][data-cc-mode="light"] aside.dframe-sidebar [class*="text-text"] {
+  color: hsl(0 0% 26%) !important;
 }

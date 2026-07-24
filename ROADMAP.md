@@ -9,9 +9,11 @@ real usage.
 - **Firefox pairing.** The bridge works on Firefox once paired, but the
   permission prompt can't currently be triggered from the pairing panel
   there. A small extension settings page will host the grant.
-- **Publishing `clenby-bridge` to npm** so the one-line setup works
-  everywhere, with provenance (the package verifiably built from this
-  repository).
+- **Publishing `clenby-bridge` with provenance** (built and published from a
+  GitHub Action, attested via Sigstore). Once live, `npm audit signatures`
+  verifies automatically that the package came from this repository — no
+  manual hash comparison. `clenby-bridge audit` stays as the local check
+  that your disk matches what npm delivered.
 - **Extension identity pinning.** Once the store listing exists, the bridge
   will accept only Clenby's published extension ID at the handshake.
 - **More connection-layer tests** on the extension side, to match the
@@ -25,8 +27,6 @@ real usage.
   arrivals at a glance.
 - **Settings backup.** Export/import of your themes, toggles, and overrides,
   so a reinstall or a new machine doesn't mean reconfiguring.
-- **Pairing-panel polish.** The connect flow works; it deserves better visual
-  design than a stack of commands.
 
 ## Later — bigger swings
 

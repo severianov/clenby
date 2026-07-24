@@ -193,12 +193,71 @@ html {
 }
 .cc-ad:hover {
   opacity: 1;
-  background-color: var(--cc-surface-raised);
-  border-color: var(--cc-text-faint);
+  /* Derive the hover surface from the CONTRASTING text color, NOT a surface
+   * token: several presets set --cc-bar-bg (the bar's own background) to the
+   * same color as --cc-surface-raised (e.g. every light mode — both `48 20% 94%`
+   * in the default preset), so the old `background: var(--cc-surface-raised)`
+   * painted the chip the bar's own color and the highlight vanished. A
+   * translucent text overlay is always visible on every theme + both modes, and
+   * brightening the border (faint → muted) adds a second affordance. No #cc-status
+   * !important block targets .cc-ad, so this wins cleanly. */
+  background-color: color-mix(in srgb, var(--cc-text) 12%, transparent);
+  border-color: var(--cc-text-muted);
 }
 @media (prefers-reduced-motion: reduce) {
   .cc-ad {
     transition: none;
+  }
+}
+
+/* Row-3 send-lifecycle narration (the chat-id slot; claude-code-bridge is the
+ * sole producer). While a Claude Code send is in flight the id line is replaced
+ * by  ⇄ sending to <node>…  →  ✓ received by <node> · pick up: <cmd>  →
+ * ✕ <reason>. Phase colors come from the shared --cc-* tokens (accent / ok /
+ * danger), so every theme picks them up. */
+#cc-l3.cc-life {
+  opacity: 1; /* the lifecycle line is primary — not the id line's dim 0.55 */
+  cursor: default; /* click-to-copy is suspended while it shows */
+}
+#cc-l3.cc-life:hover {
+  opacity: 1;
+}
+/* The teachable receive command — a mono chip so it reads as something to type.
+ * The bar is already monospace; the tinted chip + accent make it a "command". */
+.cc-life-cmd {
+  font-family: var(--cc-mono, monospace);
+  color: var(--cc-accent);
+  background: color-mix(in srgb, var(--cc-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cc-accent) 45%, transparent);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+/* Entrance: a subtle fade + ≤200 ms slide-in. The wrapper is rebuilt once per
+ * real phase change (buildL3), so it plays on each transition, never per tick. */
+.cc-life-in {
+  display: inline-block;
+  max-width: 100%;
+  animation: cc-life-in 180ms ease;
+}
+@keyframes cc-life-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Give the whole row to the lifecycle line while it shows — the decorative
+ * sponsor board yields for the ~5 s hold so the receive command is never
+ * clipped on a narrow composer. */
+#cc-status.cc-life-active .cc-ad {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-life-in {
+    animation: none;
   }
 }
 
@@ -4599,96 +4658,68 @@ p > .cc-clk-box {
   color: var(--cc-text-muted);
 }
 
-/* ---- send popover (answer toolbar → Claude Code) ---- */
-.cc-send-pop {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 290px;
-  max-width: calc(100vw - 24px);
-  padding: 13px;
-  z-index: 46; /* Z.popover */
-}
-.cc-send-title {
-  font: 700 13px var(--cc-sans, sans-serif);
-  color: var(--cc-text);
-}
-.cc-send-target {
-  font: 500 11px var(--cc-mono, monospace);
-  color: var(--cc-text-muted);
-  word-break: break-all;
-}
-.cc-send-sub {
-  font: 600 10px var(--cc-mono, monospace);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cc-text-faint);
-  margin-top: 2px;
-}
-.cc-send-scope {
-  width: 100%;
-}
-.cc-send-handles {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.cc-send-handle {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 7px 9px;
-  border: 1px solid var(--cc-border);
-  border-radius: 8px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-.cc-send-handle:hover {
-  background: var(--cc-surface-raised);
-}
-.cc-send-handle:focus-visible {
-  outline: 2px solid var(--cc-accent);
-  outline-offset: 1px;
-}
-.cc-send-handle[aria-checked="true"] {
-  border-color: color-mix(in srgb, var(--cc-accent) 55%, transparent);
-  background: color-mix(in srgb, var(--cc-accent) 12%, transparent);
-}
-.cc-send-handle-name {
-  font: 600 12.5px var(--cc-sans, sans-serif);
-  color: var(--cc-text);
-}
-.cc-send-handle-hint {
-  font: 400 11px var(--cc-sans, sans-serif);
-  color: var(--cc-text-muted);
-}
-.cc-send-pickup {
-  font: 400 11px/1.5 var(--cc-sans, sans-serif);
-  color: var(--cc-text-faint);
-}
-.cc-send-status {
-  min-height: 14px;
-  font: 500 11.5px var(--cc-sans, sans-serif);
-  color: var(--cc-text-muted);
-}
-.cc-send-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.cc-send-go {
-  background: var(--cc-accent);
-  border-color: var(--cc-accent);
-  color: #fff;
-}
-.cc-send-go:hover {
-  filter: brightness(1.08);
-}
-.cc-send-go[disabled] {
-  opacity: 0.5;
+/* Same inert treatment for the outline + notes send-to-Claude-Code icon
+ * buttons (cc-iconbtn), applied by those features when no session is live. */
+.cc-send-inert {
+  opacity: 0.4;
   cursor: default;
-  filter: none;
+}
+.cc-send-inert:hover {
+  background: transparent;
+  color: var(--cc-text-muted);
+}
+
+/* In-flight face for the collection send-to-Claude-Code icon buttons (outline
+ * pinned/marks + notes): the moment the button is clicked it dims and gently
+ * breathes until the reqId-matched result lands (or an 8 s failsafe restores
+ * it) — immediate "it's on its way" feedback so the ack wait never reads as a
+ * dead click. Pairs with aria-busy="true", set by the feature. */
+.cc-send-busy {
+  opacity: 0.55;
+  animation: cc-send-busy-pulse 1s ease-in-out infinite;
+}
+@keyframes cc-send-busy-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-send-busy {
+    animation: none;
+  }
+}
+
+/* ---- unified "sent ✓" success pulse (every send-to-Claude-Code control) -----
+ * A brief scale bump + soft green glow played ALONGSIDE the ✓ flash the instant
+ * a reqId-matched send succeeds, on every send surface — the answer toolbar's
+ * per-answer button, the outline's pinned/marks send icons, the notes send
+ * button, and the gear Export "Send" row's icon — so a successful handoff feels
+ * like one product (same 250ms / easing everywhere). The class is added on
+ * success and removed on a short managed timeout; failures keep their red
+ * treatment. Under prefers-reduced-motion the animation is disabled — the ✓
+ * alone is the feedback. --cc-ok is authored per preset/mode (fallback
+ * #7c9a67). */
+@keyframes cc-sent-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--cc-ok, hsl(95 20% 50%)) 45%, transparent);
+  }
+  45% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--cc-ok, hsl(95 20% 50%)) 26%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--cc-ok, hsl(95 20% 50%)) 0%, transparent);
+  }
+}
+.cc-sent-pulse {
+  animation: cc-sent-pulse 250ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-sent-pulse {
+    animation: none;
+  }
 }
 
 /* ---- Claude Code zone — flash target + Terminal skin ---------------------
@@ -4848,6 +4879,27 @@ p > .cc-clk-box {
   border: 1px solid hsl(0 72% 62% / 0.35);
   background: hsl(0 72% 62% / 0.06);
   border-radius: 6px;
+}
+
+/* Receive-handoff code chip (connected state, live session only): a copyable
+   "/mcp__clenby__handoff" box in the dark input/chip idiom. cc-cct-cmd supplies
+   the reset, baseline flex, and the delegated copy behavior; these rules repaint
+   it as a bordered rectangle and float the ⧉ glyph to the right edge. */
+.cc-cct-recv {
+  display: flex;
+  align-items: baseline;
+  margin-top: 4px;
+  padding: 6px 9px;
+  border: 1px solid hsl(0 0% 100% / 0.12);
+  border-radius: 6px;
+  background: #0c0c0e;
+}
+.cc-cct-recv:hover {
+  background: #131316;
+  border-color: hsl(0 0% 100% / 0.2);
+}
+.cc-cct-recv .cc-cct-copy {
+  margin-left: auto;
 }
 
 /* Inline rescan control in the connected status line. */

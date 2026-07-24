@@ -40,6 +40,13 @@ const SEARCH_MIN = 2;
 const STORE_POLL_MS = 1200;
 const MARK_JUMP_RETRY_MS = 1200;
 const FLASH_RESTORE_MS = 1600;
+/** How long the shared cc-sent-pulse success animation class stays applied — a
+ *  touch past its 250ms CSS animation, then cleared by a managed timer. */
+const PULSE_MS = 320;
+
+/** Shown on the export-toolbar send buttons while no Claude Code session is
+ *  connected — the send is inert until ≥1 session lights it up (spec §3). */
+const SEND_INERT_LABEL = "Start Claude Code and this lights up.";
 
 const PLACEHOLDER: Record<TabId, string> = {
   q: "Search your questions…",
@@ -78,6 +85,9 @@ export const outline: FeatureModule = {
     let activeTab: TabId = "a";
     let pins: string[] = [];
     let highlights: HighlightRecord[] = [];
+    // ≥1 Claude Code session connected (bus-fed) — the export toolbars' send
+    // buttons are inert until this flips true (spec §3).
+    let bridgeLive = false;
     const actions = new Map<string, () => void>();
     let actionSeq = 0;
 
@@ -280,6 +290,14 @@ export const outline: FeatureModule = {
       }, FLASH_RESTORE_MS);
     };
 
+    /** The shared "sent ✓" success pulse (companion.css cc-sent-pulse) — the
+     *  same brief scale bump + green glow every send surface plays. Cleared by a
+     *  managed timer; inert under prefers-reduced-motion (the ✓ is the feedback). */
+    const pulseSent = (b: HTMLElement): void => {
+      b.classList.add("cc-sent-pulse");
+      ctx.setTimeout(() => b.classList.remove("cc-sent-pulse"), PULSE_MS);
+    };
+
     const copyMd = (b: HTMLButtonElement, buildMd: () => string): void => {
       const md = buildMd();
       navigator.clipboard
@@ -308,14 +326,26 @@ export const outline: FeatureModule = {
       flashOk(b, SVG_DL);
     };
 
-    /** Pending bridge-send button — flashed ✓/red by the next send-result. */
-    let sendPending: HTMLButtonElement | null = null;
-    ctx.on("bridge:send-result", ({ ok }) => {
-      const b = sendPending;
-      if (!b) return;
+    /** Pending bridge-send button + its correlation token — flashed ✓/red only
+     *  by the send-result whose reqId matches (four surfaces share the
+     *  contract; a mismatch is another feature's result). */
+    let sendPending: { btn: HTMLButtonElement; reqId: string } | null = null;
+    /** reqId + scope of the send currently IN FLIGHT (click → result/failsafe),
+     *  or null. Re-derived onto the freshly built send button on every render
+     *  so the busy face survives the toolbar's frequent rebuilds (store poll /
+     *  conversation updates); the scope names which toolbar (pins vs marks). */
+    let sendInFlight: { reqId: string; scope: "pins" | "highlights" } | null = null;
+    ctx.on("bridge:send-result", ({ ok, reqId }) => {
+      const pending = sendPending;
+      if (!pending || reqId !== pending.reqId) return;
       sendPending = null;
+      if (sendInFlight?.reqId === reqId) sendInFlight = null;
+      const b = pending.btn;
+      b.classList.remove("cc-send-busy");
+      b.removeAttribute("aria-busy");
       if (ok) {
         flashOk(b, SVG_SEND);
+        pulseSent(b); // shared success animation, alongside the ✓
       } else {
         b.classList.add("cc-danger-text");
         ctx.setTimeout(() => b.classList.remove("cc-danger-text"), 1600);
@@ -342,11 +372,41 @@ export const outline: FeatureModule = {
       btns.append(bc, bd);
       if (spec.send) {
         const send = spec.send;
-        const bs = mkIcon(SVG_SEND, send.title);
-        bs.dataset["ccAct"] = act(() => {
-          sendPending = bs;
-          ctx.bus.emit("bridge:send", { handle: "context", scope: send.scope, body: spec.md() });
-        });
+        const bs = mkIcon(SVG_SEND, bridgeLive ? send.title : SEND_INERT_LABEL);
+        if (bridgeLive) {
+          // Re-derive the busy face after a rebuild: a send armed before this
+          // re-render is still in flight on the freshly built button.
+          if (sendInFlight?.scope === send.scope) {
+            bs.classList.add("cc-send-busy");
+            bs.setAttribute("aria-busy", "true");
+          }
+          bs.dataset["ccAct"] = act(() => {
+            const reqId = crypto.randomUUID();
+            sendPending = { btn: bs, reqId };
+            sendInFlight = { reqId, scope: send.scope };
+            // Immediate in-flight face — dim + breathe the instant it's clicked,
+            // not when the ack returns.
+            bs.classList.add("cc-send-busy");
+            bs.setAttribute("aria-busy", "true");
+            // Failsafe: drop the busy face after 8 s if no result ever lands, so
+            // it can never stick. reqId-guarded so a newer send keeps ownership.
+            ctx.setTimeout(() => {
+              if (sendInFlight?.reqId !== reqId) return;
+              sendInFlight = null;
+              sendPending = null;
+              if (bs.isConnected) {
+                bs.classList.remove("cc-send-busy");
+                bs.removeAttribute("aria-busy");
+              }
+            }, 8000);
+            ctx.bus.emit("bridge:send", { handle: "context", scope: send.scope, body: spec.md(), reqId });
+          });
+        } else {
+          // Inert: greyed, no data-cc-act so the delegated click is a no-op
+          // (same treatment as the answer-toolbar's send button).
+          bs.classList.add("cc-send-inert");
+          bs.setAttribute("aria-label", SEND_INERT_LABEL);
+        }
         btns.append(bs);
       }
       row.append(btns);
@@ -552,6 +612,15 @@ export const outline: FeatureModule = {
     // below stays for highlights.
     ctx.on("pins:changed", ({ pinned }) => {
       pins = [...pinned];
+      render();
+    });
+    // Live/inert state for the export-toolbar send buttons. The claude-code-
+    // bridge feature is the single producer (re-broadcasts on cold start); we
+    // only re-render on a live↔inert transition so the toolbars rebuild.
+    ctx.on("bridge:changed", ({ sessions }) => {
+      const live = sessions.length > 0;
+      if (live === bridgeLive) return;
+      bridgeLive = live;
       render();
     });
 

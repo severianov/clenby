@@ -9,7 +9,10 @@
  *     chip's counts 2026-07-21) + secret guard (inline red warning;
  *     gated on settings.secretGuardOn — default ON, live via storage)
  *  R2 "N msgs · N turns · duration"
- *  L3 chat id (click to copy the chat link)
+ *  L3 chat id (click to copy the chat link) — repurposed while a Claude Code
+ *     send is in flight to narrate the bridge's "bridge:send-lifecycle"
+ *     (⇄ sending → ✓ received by <node> · pick up: /mcp__clenby__handoff → ✕
+ *     <reason>); the claude-code-bridge feature is the sole producer
  *  R3 sponsor slot (./sponsor.ts split-flap board)
  *
  * LANDMINES honored here:
@@ -79,6 +82,15 @@ const COPIED_FLASH_MS = 1500;
 const BAR_GAP_PX = 8;
 /** Bar height fallback (72px, floated 8px above the composer). */
 const BAR_FALLBACK_HEIGHT_PX = 72;
+/** How long a terminal send-lifecycle line (✓ received / ✕ failed) holds
+ *  before the chat-id line returns. */
+const LIFECYCLE_HOLD_MS = 5000;
+/** Safety cap on a "sending…" line that never gets a terminal (e.g. the tab
+ *  aborted its push): after this it self-restores to the id line. */
+const LIFECYCLE_SENDING_CAP_MS = 30_000;
+/** The receive command the bar teaches on a delivered handoff — the bridge's
+ *  MCP `handoff` prompt, surfaced by Claude Code as this slash command. */
+const HANDOFF_PICKUP_CMD = "/mcp__clenby__handoff";
 
 export const statusBar: FeatureModule = {
   id: "status-bar",
@@ -125,6 +137,23 @@ export const statusBar: FeatureModule = {
     let streamedChars = 0;
     let glyphIndex = 0;
     let copiedFlash = false;
+
+    // ---- send lifecycle (row-3 left segment; claude-code-bridge is the sole
+    //      producer) — narrates a Claude Code send in the chat-id slot, then
+    //      restores. Only the LATEST send is narrated: a terminal phase from an
+    //      older reqId is dropped while a newer send holds the line.
+    type LifePhase = "sending" | "received" | "failed";
+    let lifePhase: LifePhase | null = null;
+    let lifeTarget = "";
+    let lifeReason = "";
+    /** reqId of the send currently narrated — the key for stale-terminal
+     *  rejection. null once no send is being narrated. */
+    let lifeReqId: string | null = null;
+    /** While Date.now() < this, the lifecycle line owns the segment. */
+    let lifeHoldUntil = 0;
+    /** Last-painted row-3-left signature — the 500 ms re-render is a no-op while
+     *  it is unchanged, so the entrance animation never re-fires mid-hold. */
+    let l3Sig = "";
     // Secret detection (gear "Secret detection" switch + palette action;
     // default ON). When off, the draft is never scanned and no warning shows.
     let secretGuardOn = true;
@@ -247,23 +276,116 @@ export const statusBar: FeatureModule = {
       r2.textContent = `${msgs.length} msgs · ${turns} turns${dur}`;
     };
 
-    const renderChatId = (): void => {
-      if (copiedFlash) return; // "✓ link copied" is showing
+    // Row-3 left is normally the chat id (click to copy the link); during a
+    // Claude Code send the bridge's lifecycle narration takes it over.
+    const l3Signature = (): string => {
+      if (lifePhase !== null && Date.now() < lifeHoldUntil) {
+        return `life:${lifePhase}:${lifeTarget}:${lifeReason}`;
+      }
+      if (copiedFlash) return "copied";
+      return `id:${ctx.storage.convId ?? ""}`;
+    };
+
+    /** Paint row-3-left from the current state. Called by renderL3 ONLY after a
+     *  signature change, so the entrance animation fires once per real
+     *  transition — not on every tick. */
+    const buildL3 = (): void => {
+      const life = lifePhase !== null && Date.now() < lifeHoldUntil;
+      bar.classList.toggle("cc-life-active", life);
+      l3.classList.toggle("cc-life", life);
+      l3.replaceChildren();
+      if (life) {
+        // One animated wrapper (fresh each real change → the ≤200 ms slide-in
+        // plays once; companion.css disables it under prefers-reduced-motion).
+        const wrap = ownedEl("span", { owner: OWNER, className: "cc-life-in" });
+        if (lifePhase === "sending") {
+          wrap.append(
+            ownedEl("span", {
+              owner: OWNER,
+              className: "cc-accent-text",
+              text: `⇄ sending to ${lifeTarget}…`,
+            }),
+          );
+          l3.title = `Sending to ${lifeTarget}…`;
+        } else if (lifePhase === "received") {
+          wrap.append(
+            ownedEl("span", { owner: OWNER, className: "cc-ok-text", text: "✓" }),
+            ` received by ${lifeTarget} · `,
+            ownedEl("span", { owner: OWNER, className: "cc-faint", text: "pick up: " }),
+            ownedEl("span", { owner: OWNER, className: "cc-life-cmd", text: HANDOFF_PICKUP_CMD }),
+          );
+          l3.title = `Received by ${lifeTarget}. In Claude Code, run ${HANDOFF_PICKUP_CMD} to pick it up.`;
+        } else {
+          wrap.append(
+            ownedEl("span", { owner: OWNER, className: "cc-danger-text", text: `✕ ${lifeReason}` }),
+          );
+          l3.title = lifeReason;
+        }
+        l3.append(wrap);
+        return;
+      }
+      if (copiedFlash) {
+        l3.textContent = "✓ link copied";
+        l3.title = "";
+        return;
+      }
       const convId = ctx.storage.convId;
       l3.textContent = convId ? `id ${convId}` : "";
       l3.title = convId ? "Click to copy chat link" : "";
     };
 
+    const renderL3 = (): void => {
+      // Retire a finished/stale lifecycle first so the id line can return — this
+      // also clears lifeReqId (a later standalone failure is then accepted) and
+      // lifts the click-to-copy suspension.
+      if (lifePhase !== null && Date.now() >= lifeHoldUntil) {
+        lifePhase = null;
+        lifeReqId = null;
+      }
+      const sig = l3Signature();
+      if (sig === l3Sig) return; // nothing visible changed — leave the DOM alone
+      l3Sig = sig;
+      buildL3();
+    };
+
+    // The claude-code-bridge feature narrates every send here (it is the sole
+    // producer). Latest wins: a new "sending" takes over the segment; a terminal
+    // (received/failed) is DROPPED when it echoes an older reqId than the one now
+    // narrated. A standalone terminal — e.g. an early "no session" failure with
+    // nothing active — is accepted (lifeReqId is null).
+    ctx.on("bridge:send-lifecycle", ({ phase, target, reason, reqId }) => {
+      const rid = reqId ?? null;
+      if (phase === "sending") {
+        lifePhase = "sending";
+        lifeTarget = target;
+        lifeReason = "";
+        lifeReqId = rid;
+        lifeHoldUntil = Date.now() + LIFECYCLE_SENDING_CAP_MS;
+      } else {
+        if (lifeReqId !== null && rid !== lifeReqId) return; // stale terminal from an older send
+        lifePhase = phase;
+        lifeTarget = target;
+        lifeReason = reason ?? "";
+        lifeReqId = rid;
+        lifeHoldUntil = Date.now() + LIFECYCLE_HOLD_MS;
+      }
+      renderL3();
+    });
+
     ctx.listen(l3, "click", () => {
+      // While a send-lifecycle line owns the segment it is NOT the chat-id copy
+      // target — swallow the click so a user can't copy the chat link thinking
+      // they clicked the id (the title reflects the lifecycle, not "copy").
+      if (lifePhase !== null && Date.now() < lifeHoldUntil) return;
       if (!ctx.storage.convId) return;
       navigator.clipboard
         .writeText(location.href)
         .then(() => {
           copiedFlash = true;
-          l3.textContent = "✓ link copied";
+          renderL3();
           ctx.setTimeout(() => {
             copiedFlash = false;
-            renderChatId();
+            renderL3();
           }, COPIED_FLASH_MS);
         })
         .catch(() => {
@@ -308,7 +430,7 @@ export const statusBar: FeatureModule = {
       renderContextGauge();
       renderDraftLine();
       renderStatsLine();
-      renderChatId();
+      renderL3();
     };
     ctx.setInterval(tick, TICK_MS);
     tick();

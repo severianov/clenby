@@ -1,6 +1,6 @@
 {
   "id": "true-black",
-  "name": "True Black",
+  "name": "True B&W",
   "swatch": "#000000",
   "swatchFg": "#eeeeee",
   "style": "default",
@@ -61,52 +61,55 @@
     "light": {
       "claude": {
         "bg": [
-          "0 0% 5%",
-          "0 0% 0%",
-          "0 0% 0%",
-          "0 0% 8%",
-          "0 0% 3%",
-          "0 0% 3%"
+          "0 0% 96%",
+          "0 0% 100%",
+          "0 0% 100%",
+          "0 0% 92%",
+          "0 0% 97%",
+          "0 0% 97%"
         ],
         "text": [
-          "60 8% 98%",
-          "60 8% 97%",
-          "50 5% 72%",
-          "50 5% 68%",
-          "48 4% 55%"
+          "0 0% 4%",
+          "0 0% 9%",
+          "0 0% 30%",
+          "0 0% 34%",
+          "0 0% 46%"
         ],
-        "border": "0 0% 30%",
-        "pageBg": "0 0% 0%",
+        "border": "0 0% 72%",
+        "pageBg": "0 0% 100%",
         "paint": {
-          "bg000": "0 0% 5%",
-          "bg200": "0 0% 0%"
+          "bg000": "0 0% 96%",
+          "bg200": "0 0% 100%"
         },
-        "sidebarBg": "0 0% 0%",
-        "sidebarBorder": "0 0% 100% / 0.08",
-        "bodyText": "60 8% 97%",
-        "userText": "60 8% 97%",
-        "userBubbleBg": "0 0% 9%",
-        "userBubbleBorder": "0 0% 100% / 0.1",
-        "codeBlockBg": "0 0% 4%",
-        "codeBlockBorder": "0 0% 100% / 0.12"
+        "sidebarBg": "0 0% 100%",
+        "sidebarBorder": "0 0% 0% / 0.09",
+        "bodyText": "0 0% 9%",
+        "userText": "0 0% 9%",
+        "userBubbleBg": "0 0% 94%",
+        "userBubbleBorder": "0 0% 0% / 0.1",
+        "codeBlockBg": "0 0% 97%",
+        "codeBlockBorder": "0 0% 0% / 0.12",
+        "inlineCode": {
+          "fg": "0 0% 15%",
+          "bg": "0 0% 94%"
+        }
       },
       "companion": {
-        "bg": "240 4% 9%",
-        "surface": "240 3% 13%",
-        "surfaceRaised": "240 3% 17%",
-        "surfaceRaised2": "240 3% 21%",
-        "barBg": "240 4% 11% / 0.95",
-        "text": "0 0% 87%",
-        "textMuted": "0 0% 67%",
-        "textFaint": "0 0% 47%",
-        "border": "0 0% 100% / 0.14",
-        "accent": "15 63% 60%",
-        "danger": "0 72% 62%",
-        "gold": "46 74% 66%",
-        "ok": "95 20% 50%",
-        "shadow": "0 10px 34px rgba(0,0,0,.7)"
+        "bg": "0 0% 100%",
+        "surface": "0 0% 98%",
+        "surfaceRaised": "0 0% 95%",
+        "surfaceRaised2": "0 0% 91%",
+        "barBg": "0 0% 100% / 0.96",
+        "text": "0 0% 13%",
+        "textMuted": "0 0% 33%",
+        "textFaint": "0 0% 50%",
+        "border": "0 0% 0% / 0.14",
+        "accent": "15 68% 42%",
+        "danger": "0 72% 45%",
+        "gold": "40 85% 32%",
+        "ok": "95 30% 33%",
+        "shadow": "0 10px 34px rgba(0,0,0,.14)"
       }
     }
-  },
-  "basePalette": "dark"
+  }
 }

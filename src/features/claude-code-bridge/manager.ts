@@ -46,6 +46,10 @@ import {
 const ACK_TIMEOUT_MS = 6000;
 /** No `welcome` within this window ⇒ the socket is not a bridge; drop it. */
 const WELCOME_TIMEOUT_MS = 2500;
+/** Poll cadence while a push waits for its target session's socket to welcome
+ *  (MV3 respawn race): resolve the instant it lands instead of sleeping the
+ *  whole settle window — same worst case, far better typical. */
+const SETTLE_POLL_MS = 150;
 /** Heartbeat: ping open sockets + rescan missing ports. < 30 s keeps the
  *  Chrome MV3 worker warm off WS traffic (spec §5). */
 const HEARTBEAT_MS = 15_000;
@@ -182,8 +186,10 @@ export class BridgeManager {
       // MV3 respawn race: the worker may have just been revived by this very
       // message, before its rescan finished. Scan and give the handshake a
       // moment before declaring the session gone — otherwise the FIRST send
-      // after a worker restart always false-fails.
-      await this.#scanAndSettle();
+      // after a worker restart always false-fails. Poll for THIS session so we
+      // proceed the instant its socket welcomes rather than sleeping the whole
+      // settle window (a loopback bridge usually welcomes in a fraction of it).
+      await this.#scanAndSettle(sessionId);
       conn = this.#connForSession(sessionId);
     }
     if (!conn) return { ok: false, reason: "session disconnected — nothing sent" };
@@ -228,10 +234,26 @@ export class BridgeManager {
     }
   }
 
-  /** Scan once and give sockets a moment to hand back `welcome` (pairing UX). */
-  async #scanAndSettle(): Promise<void> {
+  /** Scan once, then give sockets a moment to hand back `welcome`.
+   *
+   *  With a target `sessionId` (the push path) POLL and resolve the instant
+   *  that session is welcomed — same worst case as the fixed wait (it never
+   *  shows up ⇒ we sit out the whole window then fail), but the common MV3
+   *  respawn case settles in ~a poll or two instead of a flat 2.7 s. Whoever
+   *  opens the socket (this scan or the concurrent init() scan) the poll picks
+   *  it up. Without a target (pairing UX) wait the whole window so the entire
+   *  roster can populate before we report status. */
+  async #scanAndSettle(sessionId?: string): Promise<void> {
     this.scan();
-    await new Promise((r) => setTimeout(r, WELCOME_TIMEOUT_MS + 200));
+    const deadline = Date.now() + WELCOME_TIMEOUT_MS + 200;
+    if (sessionId === undefined) {
+      await new Promise((r) => setTimeout(r, WELCOME_TIMEOUT_MS + 200));
+      return;
+    }
+    while (Date.now() < deadline) {
+      if (this.#connForSession(sessionId)) return; // welcomed — stop waiting
+      await new Promise((r) => setTimeout(r, SETTLE_POLL_MS));
+    }
   }
 
   #connect(port: number): void {

@@ -17,12 +17,15 @@
     "zip:firefox": "wxt zip -b firefox",
     "prepare": "wxt prepare",
     "compile": "tsc --noEmit",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint .",
     "test": "node --test --import ./tests/_alias.mjs \"tests/*.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.65.0",
     "wxt": "^0.19.13"
   }
 }

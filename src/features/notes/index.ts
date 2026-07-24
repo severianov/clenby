@@ -43,6 +43,9 @@ import { ownedEl } from "@/ui/root";
 
 const OWNER = "notes";
 const SAVE_DEBOUNCE_MS = 250;
+/** How long the shared cc-sent-pulse success animation class stays applied — a
+ *  touch past its 250ms CSS animation, then cleared by a managed timer. */
+const PULSE_MS = 320;
 
 const TODO_RE = /^- \[([x ])\] ?(.*)$/;
 const TODO_LINE_RE = /^- \[[x ]\] /;
@@ -72,15 +75,26 @@ interface MountState {
   dirty: boolean;
   container: HTMLElement | null;
   wiredContainers: WeakSet<HTMLElement>;
+  /** ≥1 Claude Code session connected (bus-fed) — the send-notes buttons are
+   *  inert until this flips true (spec §3). */
+  bridgeLive: boolean;
+  /** Send-notes button awaiting its "bridge:send-result" flash + the
+   *  correlation token that send carried. PER-MOUNT (on state, not module) so a
+   *  previous conversation's in-flight send can never flash a new mount's
+   *  button; the reqId additionally rejects another surface's result (four
+   *  senders share the one bus contract). */
+  sendPending: { btn: HTMLElement; reqId: string } | null;
+  /** reqId of the send currently IN FLIGHT (click → result/failsafe), or null.
+   *  Drives the immediate busy face; DERIVED by paintNoteSends so it survives a
+   *  header re-render, and re-armed by the LATEST click so a rapid double-send
+   *  tracks the newest reqId. */
+  sendInFlight: string | null;
 }
 
 let active: MountState | null = null;
 /** Last popover body the header cluster handed us — re-rendered on remount so
  *  an open popover survives a conversation switch with fresh data. */
 let lastContainer: HTMLElement | null = null;
-
-/** The send-notes button awaiting its bridge:send-result flash. */
-let notesSendPending: HTMLElement | null = null;
 
 export const notes: FeatureModule = {
   id: OWNER,
@@ -99,6 +113,9 @@ export const notes: FeatureModule = {
       dirty: false,
       container: null,
       wiredContainers: new WeakSet(),
+      bridgeLive: false,
+      sendPending: null,
+      sendInFlight: null,
     };
     state.loaded = loadNotes(state);
     active = state;
@@ -111,21 +128,48 @@ export const notes: FeatureModule = {
     ctx.on("ui:notes-open", ({ container }) => mountNotesPanel(container));
 
     // Flash the send-notes button on the bridge's verdict (✓ delivered / red
-    // when no session or the send failed).
-    ctx.on("bridge:send-result", ({ ok }) => {
-      const b = notesSendPending;
-      if (!b || !b.isConnected) {
-        notesSendPending = null;
+    // when no session or the send failed) — but ONLY our own send: reqId must
+    // echo the token onClick sent. A mismatch is another surface's result
+    // (four share the contract); a stale/aborted mount never touches live UI.
+    ctx.on("bridge:send-result", ({ ok, reqId }) => {
+      if (ctx.signal.aborted) return;
+      const pending = state.sendPending;
+      if (!pending || reqId !== pending.reqId) return;
+      state.sendPending = null;
+      if (state.sendInFlight === reqId) state.sendInFlight = null;
+      const b = pending.btn;
+      if (!b.isConnected) {
+        // The header re-rendered away mid-flight — drop the busy face from
+        // whichever send button is on screen now.
+        paintNoteSends(state);
         return;
       }
-      notesSendPending = null;
+      b.classList.remove("cc-send-busy");
+      b.removeAttribute("aria-busy");
       b.innerHTML = ok ? NOTES_SVG_OK : NOTES_SVG_SEND;
       b.classList.add(ok ? "cc-ok" : "cc-danger-text");
+      if (ok) {
+        // Shared "sent ✓" success pulse, alongside the ✓ — cleared by a managed
+        // timer (inert under prefers-reduced-motion).
+        b.classList.add("cc-sent-pulse");
+        ctx.setTimeout(() => b.classList.remove("cc-sent-pulse"), PULSE_MS);
+      }
       ctx.setTimeout(() => {
         if (!b.isConnected) return;
         b.innerHTML = NOTES_SVG_SEND;
-        b.classList.remove("cc-ok", "cc-danger-text");
+        b.classList.remove("cc-ok", "cc-danger-text", "cc-sent-pulse");
+        // Re-derive inert/busy: if a fresh send armed during the flash, its
+        // busy face is re-applied here instead of being stranded.
+        paintNoteSends(state);
       }, 1600);
+    });
+
+    // Send-notes buttons are inert until a Claude Code session connects (spec
+    // §3). Track the boolean off the bridge feature's broadcast (it re-emits on
+    // cold start) and repaint any button rendered in an open panel right now.
+    ctx.on("bridge:changed", ({ sessions }) => {
+      state.bridgeLive = sessions.length > 0;
+      paintNoteSends(state);
     });
 
     // The answer-toolbar's "add to note" lands here (bus event — features
@@ -361,15 +405,56 @@ const NOTES_SVG_SEND =
 const NOTES_SVG_OK =
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
 
-/** The send-all-notes icon button (list + editor headers share it). */
+/** Send-button titles: live vs. inert (no Claude Code session — spec §3). */
+const NOTES_SEND_LABEL = "Send this chat's notes to Claude Code";
+const SEND_INERT_LABEL = "Start Claude Code and this lights up.";
+
+/** The send-all-notes icon button (list + editor headers share it). Built in
+ *  its live face; paintNoteSends() greys it while no session is connected. */
 function sendNotesBtn(): HTMLElement {
   const b = ownedEl("button", {
     owner: OWNER,
     className: "cc-iconbtn cc-note-send",
-    attrs: { type: "button", title: "Send this chat's notes to Claude Code" },
+    attrs: { type: "button", title: NOTES_SEND_LABEL },
   });
   b.innerHTML = NOTES_SVG_SEND;
   return b;
+}
+
+/** Grey out / re-enable every send-notes button in the tracked container to
+ *  match the live bridge state (inert until a Claude Code session connects) and
+ *  DERIVE the in-flight busy face from state.sendInFlight — so a send that armed
+ *  in one view still reads as busy after the header re-renders (list⇄editor). */
+function paintNoteSends(state: MountState): void {
+  const container = state.container;
+  if (!container) return;
+  const live = state.bridgeLive;
+  const busy = state.sendInFlight !== null;
+  const label = live ? NOTES_SEND_LABEL : SEND_INERT_LABEL;
+  for (const b of container.querySelectorAll<HTMLElement>(".cc-note-send")) {
+    b.classList.toggle("cc-send-inert", !live);
+    b.classList.toggle("cc-send-busy", busy);
+    if (busy) b.setAttribute("aria-busy", "true");
+    else b.removeAttribute("aria-busy");
+    b.title = label;
+    b.setAttribute("aria-label", label);
+  }
+}
+
+/** Local "nothing to send" refusal on a send-notes button: the failure tint
+ *  (same class the send-result failure uses) + a brief title, then restore the
+ *  resting live/inert label. No bus round-trip — the payload never leaves. */
+function flashNoNotes(state: MountState, b: HTMLElement): void {
+  b.classList.add("cc-danger-text");
+  b.title = "No notes to send yet.";
+  b.setAttribute("aria-label", "No notes to send yet.");
+  state.ctx.setTimeout(() => {
+    if (!b.isConnected) return;
+    b.classList.remove("cc-danger-text");
+    const label = state.bridgeLive ? NOTES_SEND_LABEL : SEND_INERT_LABEL;
+    b.title = label;
+    b.setAttribute("aria-label", label);
+  }, 1600);
 }
 
 /** All notes of this chat as one export markdown (handoff body). */
@@ -472,6 +557,7 @@ function renderList(state: MountState, container: HTMLElement): void {
     list.appendChild(row);
   }
   container.appendChild(list);
+  paintNoteSends(state);
 }
 
 function renderEditor(
@@ -527,6 +613,7 @@ function renderEditor(
     hint.appendChild(ownedEl("span", { owner: OWNER, className: "cc-hint-k", text: tok }));
   });
   container.appendChild(hint);
+  paintNoteSends(state);
 
   if (focus) focusLine(container, focus.line, focus.off);
 }
@@ -692,12 +779,42 @@ function onClick(state: MountState, container: HTMLElement, ev: MouseEvent): voi
 
   const send = t.closest<HTMLElement>(".cc-note-send");
   if (send) {
-    flushSave(state); // include the note being edited right now
-    notesSendPending = send;
+    if (!state.bridgeLive) return; // inert until a Claude Code session connects
+    // Fold the open editor's latest lines into note.text BEFORE we read it, so
+    // the send body always carries the live editor content (onInput keeps it in
+    // sync, but this makes the guarantee explicit), then persist.
+    if (state.currentId !== null) applyModelToNote(state);
+    flushSave(state);
+    // Refuse locally when there is nothing meaningful to send. notesMarkdown()
+    // always emits the "# Notes — <title>" header, so an empty/all-blank note
+    // set ships a header-only payload the bridge can't detect as empty and
+    // "succeeds" uselessly. Flash the button red — no bus round-trip.
+    if (!state.notes.some((n) => n.text.trim().length > 0)) {
+      flashNoNotes(state, send);
+      return;
+    }
+    const reqId = crypto.randomUUID();
+    state.sendPending = { btn: send, reqId };
+    state.sendInFlight = reqId; // latest click wins (rapid double-send)
+    // Immediate in-flight face: clear any lingering result flash and paint the
+    // busy dim NOW — a frame after the click, not when the ack returns.
+    send.classList.remove("cc-ok", "cc-danger-text");
+    send.innerHTML = NOTES_SVG_SEND;
+    paintNoteSends(state);
+    // Failsafe: if no result ever lands (e.g. the tab aborts its push) drop the
+    // busy face after 8 s so it can never stick. reqId-guarded so a newer send
+    // still owns the state.
+    state.ctx.setTimeout(() => {
+      if (state.sendInFlight !== reqId) return;
+      state.sendInFlight = null;
+      state.sendPending = null;
+      paintNoteSends(state);
+    }, 8000);
     state.ctx.bus.emit("bridge:send", {
       handle: "context",
       scope: "notes",
       body: notesMarkdown(state),
+      reqId,
     });
     return;
   }

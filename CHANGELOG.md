@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Sends to Claude Code report back in the status bar** — the row that used to
+  just show the chat id now narrates each send in that space: `⇄ sending to
+  <node>…`, then `✓ received by <node> · pick up: /mcp__clenby__handoff` (held
+  ~5s, so you learn the one command that grabs it in Claude Code), or
+  `✕ <reason>` when it doesn't land. No confirm dialog and no extra click — the
+  five send surfaces keep their own button flashes; this is the ambient "where
+  did it go, and how do I pick it up" readout. Click-to-copy on the id is paused
+  while a send line shows, and the latest send wins when two overlap.
 - **Sending to Claude Code is one decision, not three** — the send popover now
   asks only *what* to send (whole chat / this answer / selection). What happens
-  with it is chosen at pickup, where it belongs: `/handoff` in Claude Code
+  with it is chosen at pickup, where it belongs: `/mcp__clenby__handoff` in Claude Code
   follows your words ("review this", "turn it into tests", anything), so the
   old Continue/Review/Context picker became redundant and is gone.
 - **Claude Code settings zone wears a "Terminal" skin** — the whole zone now
@@ -30,6 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stock claude.ai and follows its appearance (the mode segment disables
   there). Legacy stored "auto" resolves to claude.ai's current appearance
   until a side is picked.
+- **True Black is now "True B&W"** — the preset gained a real light half. Its
+  dark side is unchanged (OLED true black); its light side is a mirrored
+  "True White": a pure-white page and sidebar with hairline borders, a near-
+  black text ramp, and very-light-gray bubbles and code surfaces with subtle
+  borders. The old `basePalette` dark pin is dropped, so choosing Light renders
+  white instead of forcing black under both modes. The preset id stays
+  `true-black` (stored settings keep working); only the display name changed.
 - **Mini-window is always-on-top again**: pop-out opens the compact Document
   Picture-in-Picture window directly (visible over every tab and app
   window), with multiple answers stacking as cards in its scrollable column
@@ -37,21 +52,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   button is now a stateful toggle: lit while the answer is popped out, click
   again to remove it. The pinned window survives conversation switches. On
   Firefox (no Document PiP) each answer degrades to one small popup window.
-- **Mini-window content wears the "Console" design** (owner-picked from a
-  three-way mockup, `internal/design/mockups/mini-window-designs.html`): a
-  sticky mono status strip per card (title + step/todo counts + jump/unpin),
-  accent-dashed uppercase headings, full-bleed code with an accent rail,
-  `01.` step rows and mono checklists — flush against the window, no
-  in-window titlebar/border/box (the PiP's own slim strip is the only
-  chrome). The PiP window title ("Clenby — pinned answers")
-  is a stable contract for compositor keep-above rules on Wayland, where
-  only the compositor can truly enforce always-on-top.
+- **Mini-window content wears the "Console" design**: a sticky mono status
+  strip per card (title + step/todo counts + jump/unpin), accent-dashed
+  uppercase headings, full-bleed code with an accent rail, `01.` step rows
+  and mono checklists — flush against the window, no in-window
+  titlebar/border/box (the PiP's own slim strip is the only chrome). The PiP
+  window title ("Clenby — pinned answers") is a stable contract for
+  compositor keep-above rules on Wayland, where only the compositor can truly
+  enforce always-on-top.
 - **Toolbar icon**: clicking the extension icon no longer opens the old
   popup settings page (removed). On a claude.ai tab it opens the in-page
   gear settings; elsewhere it focuses (or opens) claude.ai.
 
 ### Fixed
 
+- **"Send to Claude Code" feels instant, and the first send after an idle spell
+  is quick** — two changes to the send path. The background used to sleep a flat
+  ~2.7 s whenever its socket map looked empty (the MV3 worker having just woken
+  to handle the send), so the first send after a quiet stretch always dragged
+  even though the loopback bridge answers in a fraction of that; it now polls and
+  proceeds the instant the session's socket checks in (same worst case, far
+  quicker typically). And every collection send button — outline pinned, outline
+  marks, both notes send buttons, and the gear "Send to Claude Code" row — now
+  dims/shows "Sending…" the moment it's clicked (aria-busy for screen readers),
+  cleared by the ✓/✕ result or an 8 s failsafe, so waiting for the confirmation
+  no longer reads as "nothing happened". Rapid double-clicks track the latest
+  send, and the busy face survives the panels re-rendering mid-flight.
 - **Selector health no longer cries wolf on virtualization**: content-
   dependent anchors (`assistantTable`, `messageImage`, …) can no longer be
   marked "broken" just because claude.ai unrendered them — scrolling away
@@ -82,9 +108,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   owns the WHOLE frame, sidebar included. Only code-block surfaces follow
   the page's REAL mode, because syntax-highlighting ink cannot be restyled
   and must sit on a matching background.
-- **True Black** pins its dark base palette in both modes (`basePalette`
-  token) — choosing Light no longer leaks light danger/accent/border colors
-  and light scrollbars onto the black page.
+- **True B&W chrome is scoped to its mode**: the engine's static True Black
+  chrome CSS (sidebar pills, new-chat circle, rail labels — hardcoded dark
+  grays that resist var overrides) is now keyed to the effective mode
+  (`html[data-cc-mode]`), with a mirrored light-gray-on-white block for the
+  new white half, so the dark chrome no longer paints invisible controls onto
+  the True White page.
 - **Outline unpin race**: the outline now takes pin state from the
   `pins:changed` broadcast instead of only a 1.2 s storage poll — a lingering
   stale 📌 row could otherwise silently RE-pin the answer when its ✕ was
@@ -159,7 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   command alongside the setup line.
 - **Bridge: always-visible session chip** — once paired, the composer chip no
   longer vanishes when no Claude Code session is running: it shows a muted,
-  dashed **"not connected"** state instead, so connected-vs-not is never a
+  dashed **"clenby-bridge"** label instead, so connected-vs-not is never a
   guess. Clicking the idle chip rescans the loopback ports on the spot, and
   the gear menu's Claude Code zone gains a matching **Rescan** button.
 - **Bridge: `clenby-bridge code`** — prints your pairing code any time (and
@@ -168,41 +197,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   explicit "get your code" step.
 - **Claude Code bridge** — an opt-in, local, secure link between claude.ai and
   a running Claude Code session. Send any answer or whole conversation into
-  Claude Code with a chosen intent (Continue / Review / Context), and let
-  Claude Code read your web chats and draft a reply back into the composer
-  (never auto-sent). Setup is one line — `claude mcp add clenby -- npx
-  clenby-bridge@latest` — then Pair in the gear menu. A session chip on the
-  composer button row shows/switches which project folder a conversation is
-  linked to; sessions are identified per-process (two terminals in one repo
-  don't collide) with a `whoami` tool to match them. Loopback-only
-  (`127.0.0.1`), per-machine 256-bit token, live-only delivery (nothing
-  queued or stored on disk). The `clenby-bridge` npm package (new `bridge/`)
-  runs via `npx` — no daemon; it can never run shell commands, touch files
-  outside its token, read login credentials, open a non-loopback socket, or
-  send a message on your behalf. Passed an adversarial security review. Full
-  spec + threat model in `internal/design/claude-code-bridge-spec.md`.
+  Claude Code, and let Claude Code read your web chats and draft a reply back
+  into the composer (never auto-sent). Setup is one line — `claude mcp add
+  --scope user clenby -- npx clenby-bridge@latest` — then Pair in the gear
+  menu. A session chip on the composer button row shows/switches which
+  project folder a conversation is linked to; sessions are identified
+  per-process (two terminals in one repo don't collide) with a `whoami` tool
+  to match them. Loopback-only (`127.0.0.1`), per-machine 256-bit token,
+  live-only delivery (nothing queued or stored on disk). The `clenby-bridge`
+  npm package (new `bridge/`) runs via `npx` — no daemon; it can never run
+  shell commands, touch files outside its token, read login credentials, open
+  a non-loopback socket, or send a message on your behalf. Passed an
+  adversarial security review. Full spec + threat model in `SECURITY.md`.
 - Unpin crosses in the outline's "📌 Pinned" group — pinned answers can be
   dropped right where they surface, same affordance as highlight rows.
 - Theme-compiler unit tests (mode completeness, cascade order, Off purity)
   plus a node test-runner alias hook for `@/` imports.
 
-- Initial feature set (~40 features) for claude.ai:
+- Initial feature set (~30 features) for claude.ai:
   - **Navigation** — outline navigator with Questions/Answers/Marks tabs,
-    Conversation Atlas spatial map, command palette, find-in-conversation,
-    per-answer table of contents, jump-to-bottom with unread line.
+    command palette, find-in-conversation.
   - **Reading** — theme presets with light/dark modes and text sizing,
     mini-window pop-out (Document Picture-in-Picture), scroll lock, message
-    folding, zebra rhythm, image lightbox, live status bar, tab-title done
-    ping.
+    folding, image lightbox, live status bar, tab-title done ping.
   - **Composing** — draft keeper (per-conversation autosave), undo send,
     words/characters/token counter, optional Enter-inserts-newline mode.
-  - **Memory** — pins, persistent highlights, per-chat notes, copied-things
-    tray, live checklists.
-  - **Code & data** — code block toolbar with language badge and copy-safe
-    line numbers, table-to-CSV extractor, Markdown conversation export,
-    tool-call inspector, artifact console relay.
-  - **Trust** — risk lens, math checker, link checker, link previews,
-    citation collector.
+  - **Memory** — pins, persistent highlights, per-chat notes, live
+    checklists.
+  - **Code & data** — table-to-CSV extractor, Markdown conversation export,
+    artifact console relay.
+  - **Trust** — secret detection, math checker.
   - **Output repair** — truncation guard with one-click continue, fence
     fixer, regen safety net.
 - Self-healing config layer: central selector/endpoint registry with a

@@ -137,11 +137,42 @@ export interface CompanionEvents {
     /** Pre-built markdown body for the collection scopes (pins / highlights /
      *  notes) — the sender's own export format, enveloped by the bridge. */
     body?: string;
+    /**
+     * Correlation token (sender-generated, e.g. crypto.randomUUID()). FOUR
+     * sender surfaces share this one bus contract; the bridge echoes this token
+     * on the matching "bridge:send-result" so each sender can tell ITS result
+     * from another surface's — without it, whichever feature has a pending ref
+     * eats the next result to land (wrong-button flashes, never-resolving
+     * buttons, a queued result consuming a later send). Optional for back-compat.
+     */
+    reqId?: string;
   };
-  /** Result of the most recent "bridge:send" (the claude-code-bridge feature is
-   *  the producer): delivered after the bridge acks, or a calm failure reason.
-   *  The answer-toolbar reflects it on the pressed button. */
-  "bridge:send-result": { ok: boolean; reason?: string };
+  /** Result of a "bridge:send" (the claude-code-bridge feature is the
+   *  producer): delivered after the bridge acks, or a calm failure reason. Each
+   *  sender reflects it on the pressed button — but ONLY when {@link reqId}
+   *  echoes the token it sent (a missing token reads as legacy/unknown). */
+  "bridge:send-result": { ok: boolean; reason?: string; reqId?: string };
+  /**
+   * Send LIFECYCLE for the status bar's row-3 readout (the claude-code-bridge
+   * feature is the ONE producer — never a sender surface). Emitted around a
+   * "bridge:send": `sending` the instant the bound-session check passes AND the
+   * handoff assembles (right before the runtime push); `received` when the push
+   * acks; `failed` on any refusal (no session / assemble error / push
+   * failure/catch) carrying a human {@link reason}. `target` is the bound
+   * session's chip label — "project · petname" when both, else just the project
+   * (the claude-code-bridge chip's labelFor output); it is "" on the no-session
+   * path where nothing is bound. {@link reqId} is threaded from the originating
+   * "bridge:send" so the sole consumer (the status bar) can let the LATEST send
+   * win — a stale terminal phase from an older reqId is dropped while a newer
+   * send is being narrated. Distinct from "bridge:send-result", which the sender
+   * surfaces use to flash their own button: this is the ambient, per-send status
+   * the bar narrates in the space the chat id used to occupy. */
+  "bridge:send-lifecycle": {
+    phase: "sending" | "received" | "failed";
+    target: string;
+    reason?: string;
+    reqId?: string;
+  };
 }
 
 export type CompanionEvent = keyof CompanionEvents;

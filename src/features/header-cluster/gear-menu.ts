@@ -504,13 +504,24 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   // "# comment" line — dim by default; danger for the uninstall title.
   const commentLine = (text: string, colorCls = "cc-cct-dim"): HTMLDivElement =>
     ownedEl("div", { owner: OWNER, className: `cc-cct-line ${colorCls}`, text });
+  // Blank vertical gap — one line of the body's 1.75 rhythm (aria-hidden).
+  const spacer = (): HTMLDivElement =>
+    ownedEl("div", { owner: OWNER, className: "cc-cct-spacer", attrs: { "aria-hidden": "true" } });
+  // Decorative "---" divider — dim, mono (inherited), non-interactive.
+  const sepLine = (): HTMLDivElement =>
+    ownedEl("div", {
+      owner: OWNER,
+      className: "cc-cct-line cc-cct-dim",
+      text: "---",
+      attrs: { "aria-hidden": "true" },
+    });
   // Copyable command line: "$ <cmd> ⧉". data-cc-cmd is the single source for the
   // copied text, so what's shown and what's copied can never drift.
   const cmdLine = (cmd: string): HTMLButtonElement => {
     const b = ownedEl("button", {
       owner: OWNER,
       className: "cc-cct-line cc-cct-cmd",
-      attrs: { type: "button", title: `Copy: ${cmd}`, "aria-label": `Copy command: ${cmd}` },
+      attrs: { type: "button", title: "Click to copy", "aria-label": `Copy command: ${cmd}` },
     });
     b.dataset["ccCmd"] = cmd;
     b.append(
@@ -572,10 +583,12 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   // Advanced block (reachable ONLY while not linked — owner rule).
   const advancedBlock = ownedEl("div", { owner: OWNER, className: "cc-cct-adv cc-hidden" });
   advancedBlock.append(
-    commentLine("# check what the bridge runs — click to copy"),
+    commentLine("# check what the bridge runs"),
     cmdLine(BRIDGE_AUDIT_CMD),
+    spacer(),
     commentLine("# rotate the pairing token"),
     cmdLine(BRIDGE_ROTATE_CMD),
+    spacer(),
   );
   const removeBox = ownedEl("div", { owner: OWNER, className: "cc-cct-remove" });
   removeBox.append(
@@ -588,8 +601,9 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   grpNotLinked.append(
     promptLine("clenby status"),
     glyphLine("○", "cc-cct-gold", "not linked"),
-    ownedEl("div", { owner: OWNER, className: "cc-cct-spacer", attrs: { "aria-hidden": "true" } }),
+    spacer(),
     setupLine,
+    sepLine(),
     advancedLine,
     advancedBlock,
   );
@@ -637,13 +651,16 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   const verifyRow = ownedEl("div", { owner: OWNER, className: "cc-cct-verify cc-hidden" });
   verifyRow.append(cmdLine(BRIDGE_AUDIT_CMD));
   grpSetup.append(
-    commentLine("# 1 · register (one time) — click to copy"),
+    commentLine("# 1 · register (one time)"),
     cmdLine(BRIDGE_SETUP_CMD),
+    spacer(),
     commentLine("# 2 · print your pairing code"),
     cmdLine(BRIDGE_CODE_CMD),
+    spacer(),
     commentLine("# 3 · paste it"),
     pairRow,
     pairMsg,
+    spacer(),
     setupFoot,
     verifyRow,
   );
@@ -671,9 +688,54 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   const connResultText = tSpan("cc-cct-tx", "");
   connResultLine.append(connResultGlyph, connResultText);
   const rosterWrap = ownedEl("div", { owner: OWNER, className: "cc-cct-roster" });
+  // Blank lines bracket the session roster; the trailing one collapses when
+  // there are no sessions so "linked — no session" keeps a single gap.
+  const rosterSpacerTop = spacer();
+  const rosterSpacerBot = spacer();
   const unpairLine = promptBtn("Stop the bridge connecting to this browser");
   unpairLine.append(tSpan("cc-cct-danger", " clenby unpair"));
-  grpConnected.append(connStatusLine, connResultLine, rosterWrap, unpairLine);
+  // Receive hint — the one-command pickup for a handoff sent to this session.
+  // Shown only when there IS a live session (hidden in the "linked — no
+  // session" variant, same rule as rosterSpacerBot: nothing to receive into).
+  // The box carries cc-cct-cmd so the zone's existing delegated copy listener
+  // already matches it; cc-cct-recv repaints it as a bordered code chip. No
+  // "$" prompt — /mcp__clenby__handoff is a Claude Code slash command, not a
+  // shell line.
+  const recvHint = ownedEl("div", { owner: OWNER, className: "cc-cct-recv-hint cc-hidden" });
+  const recvBox = ownedEl("button", {
+    owner: OWNER,
+    className: "cc-cct-cmd cc-cct-recv",
+    attrs: {
+      type: "button",
+      title: "Click to copy",
+      "aria-label": "Copy command: /mcp__clenby__handoff",
+    },
+  });
+  recvBox.dataset["ccCmd"] = "/mcp__clenby__handoff";
+  recvBox.append(
+    tSpan("cc-cct-cmdtx", "/mcp__clenby__handoff"),
+    ownedEl("span", {
+      owner: OWNER,
+      className: "cc-cct-copy",
+      text: "⧉",
+      attrs: { "aria-hidden": "true" },
+    }),
+  );
+  recvHint.append(
+    spacer(),
+    commentLine("# receive a handoff in this session:"),
+    recvBox,
+    commentLine("# run it in the terminal after you press send — your words override the intent"),
+  );
+  grpConnected.append(
+    connStatusLine,
+    connResultLine,
+    rosterSpacerTop,
+    rosterWrap,
+    rosterSpacerBot,
+    unpairLine,
+    recvHint,
+  );
 
   body.append(grpNotLinked, grpSetup, grpConnected);
 
@@ -759,6 +821,13 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
         );
         rosterWrap.append(row);
       }
+      // Collapse the trailing blank when there's no roster, so the status pair
+      // and "$ clenby unpair" keep a single gap between them.
+      rosterSpacerBot.classList.toggle("cc-hidden", sessions.length === 0);
+      // Same rule for the receive hint: there's nothing to receive into with no
+      // session, so it hides alongside the roster in the "linked — no session"
+      // variant and returns once a session appears.
+      recvHint.classList.toggle("cc-hidden", sessions.length === 0);
     }
 
     // Leaving setup clears any pairing status/error.

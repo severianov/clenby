@@ -14,7 +14,7 @@ Everything runs locally in your browser. No servers, no accounts, no analytics.
 
 ### Read
 
-- **Themes** — full restyling presets for claude.ai (classic, book, compact, code, true black, …) with light/dark modes and adjustable text size.
+- **Themes** — full restyling presets for claude.ai (classic, book, compact, code, true B&W, …), each with a hard light or dark rendering (True B&W pairs a true-black night half with a true-white day half) and adjustable text size.
 - **Mini-window** — pop any answer into a true always-on-top window (Document Picture-in-Picture) so it stays visible while you work elsewhere. On Linux/Wayland the compositor owns stacking: to make keep-above unconditional, add a window rule matching the window title `Clenby — pinned answers` (KWin: Window Rules → title exact → "Keep above" Force; Hyprland: `windowrulev2 = pin, title:^(Clenby — pinned answers)$`).
 - **Scroll lock** — stops claude.ai from pulling the viewport to the bottom while an answer is still streaming.
 - **Folding** — collapse long messages down to a one-line head.
@@ -40,7 +40,7 @@ Everything runs locally in your browser. No servers, no accounts, no analytics.
 ### Code & data
 
 - **Table toolbar** — every markdown table gets copy-as-TSV, CSV download, and a sortable full-screen view.
-- **Export** — copy or download the conversation as clean Markdown, with an inline scope chooser.
+- **Export** — copy or download the conversation as clean Markdown, with an inline scope chooser; the gear menu's Export section can also send it straight to Claude Code.
 - **Console relay** — catches runtime errors inside Claude's artifact previews and sends them back to Claude with one click.
 
 ### Trust
@@ -75,11 +75,13 @@ You need [Node.js](https://nodejs.org) installed (if you installed Claude Code w
    ```
 3. Paste the code in Clenby's gear menu → Claude Code → **Pair**, and confirm your browser's permission request.
 
-Pairing happens once per machine, never again. After that everything is automatic: a session chip by the composer shows **not connected** (greyed, dashed) until a Claude Code session is running, then switches to the project folder name, and "Send to Claude Code" lights up. Click the chip or the gear menu's **Rescan** any time to check for sessions.
+Pairing happens once per machine, never again. After that everything is automatic: a session chip by the composer shows **clenby-bridge** (greyed, dashed) until a Claude Code session is running, then switches to the project name and the session's petname (e.g. `clenby · calm-falcon`), and "Send to Claude Code" lights up. Click the chip or the gear menu's **Rescan** (⟳) any time to check for sessions.
 
 ### How it works
 
 Every answer gets a *Send to Claude Code* button. Pick what to send (whole conversation, this answer, a selection) and hit Send. The handoff travels as readable Markdown with a header telling Claude Code to treat it as data, not commands. What happens with it next is decided at pickup, on the Claude Code side.
+
+The outline's Pinned and Marks toolbars, and the Notes panel, carry the same send button for their own content: all pins, all highlights, or this chat's notes.
 
 Each Claude Code session is identified by its own id, not just its folder, so two terminals in the same repo don't collide. The chip by the composer shows and switches the target; ask any session `whoami` to match it to a row.
 
@@ -89,7 +91,7 @@ Delivery is deliberately pull-based: sending never interrupts or auto-prompts yo
 
 If no session is connected, nothing queues. The Send button simply waits, greyed, until a session connects. Delivery is live-only; nothing about your conversations is ever stored on disk.
 
-The bridge is not a daemon: it dies with its Claude Code session, so ending the session (or running `/mcp` in it and disabling `clenby`) stops that bridge instantly. Nothing keeps running on its own. To sever the link entirely, use **Forget** in the gear menu: it unpairs, wipes the stored token, and releases the 127.0.0.1 permission.
+The bridge is not a daemon: it dies with its Claude Code session, so ending the session (or running `/mcp` in it and disabling `clenby`) stops that bridge instantly. Nothing keeps running on its own. To sever the link entirely, use the **`$ clenby unpair`** line in the gear menu's Claude Code terminal: it unpairs, wipes the stored token, and releases the 127.0.0.1 permission.
 
 ### Why not a claude.ai custom connector?
 
@@ -103,11 +105,11 @@ There's no native handoff either. claude.ai's own "Keep going in Claude Code" bu
 
 ### Security posture
 
-The bridge binds to loopback only, authenticates every connection with a per-machine token (256-bit, compared in constant time), and rejects anything that isn't your browser extension. It will never run shell commands, read or write arbitrary files, touch your login cookies or tokens, open a non-loopback socket, or send a message on your behalf. `clenby-bridge` is open source and runs via `npx`: no daemon, no background service, nothing left running when Claude Code isn't. Full threat model: [`internal/design/claude-code-bridge-spec.md`](./internal/design/claude-code-bridge-spec.md).
+The bridge binds to loopback only, authenticates every connection with a per-machine token (256-bit, compared in constant time), and rejects anything that isn't your browser extension. It will never run shell commands, read or write arbitrary files, touch your login cookies or tokens, open a non-loopback socket, or send a message on your behalf. `clenby-bridge` is open source and runs via `npx`: no daemon, no background service, nothing left running when Claude Code isn't. Full threat model: [`SECURITY.md`](./SECURITY.md).
 
 ### Troubleshooting
 
-- **Chip says "not connected"?** No Claude Code session is running (or it just started; click the chip to rescan). Start `claude` in a project folder and the chip switches to its name.
+- **Chip says "clenby-bridge" (greyed/dashed)?** No Claude Code session is running (or it just started; click the chip to rescan). Start `claude` in a project folder and the chip switches to its project name and petname.
 - **Lost your pairing code?** `npx clenby-bridge@latest code` prints it any time. You only need it again on a new browser profile.
 - **Asked to pair again?** Your token was rotated (`npx clenby-bridge --rotate-token`); paste the new code once.
 - **Send button greyed out?** No session connected. Start Claude Code in a project folder and it lights up.

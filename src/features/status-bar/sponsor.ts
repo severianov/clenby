@@ -32,7 +32,7 @@ export interface SponsorEntry {
 export const SPONSOR_MESSAGES: readonly SponsorEntry[] = [
   { text: "ad · your brand here", href: null },
   { text: "☕ buy me a coffee", href: null },
-  { text: "⭐ star us on GitHub", href: null },
+  { text: "⭐ star us on GitHub", href: "https://github.com/severianov/clenby" },
   { text: "sponsor this slot", href: null },
 ];
 
@@ -73,6 +73,25 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
   const reducedMotion = (): boolean =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /** Per-entry hover affordance: entries with a real link get a "clickable"
+   *  tooltip naming the destination host; reserved slots keep the "coming soon"
+   *  note. The cursor is always pointer (.cc-ad) and the hover highlight
+   *  (companion.css) is the shared visual cue — this only differentiates the
+   *  title. The click handler already honors href (opens it with noopener). */
+  const applyAffordance = (entry: SponsorEntry | undefined): void => {
+    if (!entry?.href) {
+      slot.title = "Sponsor slot — links coming soon";
+      return;
+    }
+    let host = "";
+    try {
+      host = new URL(entry.href).host;
+    } catch {
+      host = "";
+    }
+    slot.title = host ? `Open ${host} in a new tab` : "Open in a new tab";
+  };
+
   const flapTo = (text: string): void => {
     target = text;
     if (reducedMotion()) {
@@ -109,7 +128,9 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
   // Message rotation.
   host.setInterval(() => {
     index = (index + 1) % SPONSOR_MESSAGES.length;
-    flapTo(SPONSOR_MESSAGES[index]?.text ?? "");
+    const entry = SPONSOR_MESSAGES[index];
+    applyAffordance(entry);
+    flapTo(entry?.text ?? "");
   }, ROTATE_MS);
 
   // Click-through — link field ready; noopener always.
@@ -118,6 +139,6 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
     if (entry?.href) window.open(entry.href, "_blank", "noopener");
   });
 
-  slot.title = "Sponsor slot — links coming soon";
+  applyAffordance(SPONSOR_MESSAGES[index]);
   flapTo(target);
 }

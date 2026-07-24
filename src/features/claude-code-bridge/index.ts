@@ -129,6 +129,11 @@ export const claudeCodeBridge: FeatureModule = {
     const labelFor = (s: BridgeSession): string =>
       s.petname ? `${s.project} · ${s.petname}` : s.project;
 
+    /** True only while a manual rescan is in flight — swaps the idle chip's
+     *  label to "scanning…" so a paired-but-sessionless click reads as active
+     *  (the bare busy-opacity alone read as "does nothing"). */
+    let rescanning = false;
+
     const renderChip = (): void => {
       const bound = boundSession();
       if (!bound) {
@@ -139,7 +144,11 @@ export const claudeCodeBridge: FeatureModule = {
         chipBtn.classList.add("cc-ccb-idle");
         chipBtn.replaceChildren(
           ownedEl("span", { owner: OWNER, className: "cc-ccb-dot", text: DOT }),
-          ownedEl("span", { owner: OWNER, className: "cc-ccb-label", text: "clenby-bridge" }),
+          ownedEl("span", {
+            owner: OWNER,
+            className: "cc-ccb-label",
+            text: rescanning ? "scanning…" : "clenby-bridge",
+          }),
         );
         chipBtn.title = paired
           ? "No Claude Code session connected — click to check now. Start Claude Code in a project folder to connect."
@@ -158,16 +167,13 @@ export const claudeCodeBridge: FeatureModule = {
       const multi = sessions.length >= 2;
       chipBtn.title = multi
         ? `Sending to ${bound.project} (${bound.path}) — click to switch session`
-        : `Sending to ${bound.project} (${bound.path})`;
+        : `Sending to ${bound.project} (${bound.path}) — click for session details`;
       chipBtn.setAttribute("aria-label", chipBtn.title);
-      if (multi) {
-        chipBtn.setAttribute("aria-haspopup", "listbox");
-        chipBtn.setAttribute("aria-expanded", menu.classList.contains("cc-hidden") ? "false" : "true");
-      } else {
-        chipBtn.removeAttribute("aria-haspopup");
-        chipBtn.removeAttribute("aria-expanded");
-        menu.classList.add("cc-hidden");
-      }
+      // A bound chip always opens the roster listbox (switch when >1, show the
+      // bound session's details when exactly 1), so advertise the popup in
+      // every bound state — never a dead click.
+      chipBtn.setAttribute("aria-haspopup", "listbox");
+      chipBtn.setAttribute("aria-expanded", menu.classList.contains("cc-hidden") ? "false" : "true");
     };
 
     const closeMenu = (): void => {
@@ -218,8 +224,16 @@ export const claudeCodeBridge: FeatureModule = {
      *  of waiting for its next heartbeat. The immediate reply reflects the scan
      *  kick-off; freshly welcomed sessions arrive via the roster broadcast. */
     const rescan = (): void => {
+      if (rescanning) return; // a scan is already in flight
+      rescanning = true;
       chipBtn.classList.add("cc-ccb-busy");
-      const settle = (): void => chipBtn.classList.remove("cc-ccb-busy");
+      renderChip(); // paint "scanning…" now — the click needs visible feedback
+      const done = (): void => {
+        if (!rescanning) return;
+        rescanning = false;
+        chipBtn.classList.remove("cc-ccb-busy");
+        renderChip(); // renderChip rebuilds the label back to its resting text
+      };
       void browser.runtime
         .sendMessage({ type: "cc:bridge:rescan" })
         .then((status: unknown) => {
@@ -228,10 +242,11 @@ export const claudeCodeBridge: FeatureModule = {
             applyStatus(status as BridgeStatus);
           }
         })
-        .catch(() => undefined)
-        .finally(() => {
-          if (!ctx.signal.aborted) ctx.setTimeout(settle, 400);
-        });
+        .catch(() => undefined);
+      // The immediate reply is the pre-scan status and a fruitless scan emits no
+      // roster broadcast, so nothing else would repaint the chip — restore after
+      // ~1200ms so "scanning…" can never stick.
+      ctx.setTimeout(done, 1200);
     };
 
     ctx.listen(chipBtn, "click", (ev: MouseEvent) => {
@@ -241,7 +256,8 @@ export const claudeCodeBridge: FeatureModule = {
         else ctx.bus.emit("ui:bridge-setup", {}); // gear opens, scrolls, flashes
         return;
       }
-      if (sessions.length < 2) return; // one session → nothing to switch to
+      // One or more sessions → open the roster dropdown (a single session shows
+      // its own row — informative, never a dead click).
       if (menu.classList.contains("cc-hidden")) openMenu();
       else closeMenu();
     });
@@ -306,8 +322,9 @@ export const claudeCodeBridge: FeatureModule = {
 
       let body: string;
       let meta: HandoffMeta;
-      if (scope === "pins" || scope === "highlights" || scope === "notes") {
-        // Collection scopes: the sender built its own export markdown.
+      if (scope === "pins" || scope === "highlights" || scope === "notes" || scope === "answers") {
+        // Collection scopes (+ export's claude-only "answers"): the sender
+        // built its own export markdown and handed it over.
         const text = (prebuiltBody ?? "").trim();
         if (!text) return { error: `Nothing to send — no ${scope} yet.` };
         body = text;
@@ -323,8 +340,17 @@ export const claudeCodeBridge: FeatureModule = {
         body = buildAnswerBody(index.name, msg.text);
         meta = { ...base, answer_id: uuid ?? "", message_count: 1 };
       } else {
-        body = buildHandoffMarkdown(index, "all");
-        meta = { ...base, message_count: index.messages.length };
+        // conversation scope: prefer a prebuilt body (export's "Send to Claude
+        // Code" → Everything) and omit message_count; the answer-toolbar sends
+        // none, so it falls back to the whole-index builder (unchanged path).
+        const text = (prebuiltBody ?? "").trim();
+        if (text) {
+          body = text;
+          meta = base;
+        } else {
+          body = buildHandoffMarkdown(index, "all");
+          meta = { ...base, message_count: index.messages.length };
+        }
       }
 
       const markdown = assembleHandoff(meta, body, nonce);
@@ -348,17 +374,35 @@ export const claudeCodeBridge: FeatureModule = {
       };
     };
 
-    ctx.on("bridge:send", ({ handle, scope, uuid, selectionText, body }) => {
+    // `reqId` (the sender's correlation token) is echoed on EVERY result path —
+    // the two early errors, the async push verdict, and the catch — so the ONE
+    // sender that owns this send is the only one that reacts (four surfaces
+    // share this contract). Distinct from `id`, the per-push WS frame id below.
+    //
+    // Alongside each result we emit the "bridge:send-lifecycle" narration for
+    // the status bar (this feature is its sole producer): `sending` the moment
+    // the send is ACCEPTED (bound session + assembled body, right before the
+    // push), then `received`/`failed` on the verdict. `target` is the chip's
+    // labelFor output — captured once at accept time so a mid-flight rebind
+    // still reports the session the handoff actually went to. The reqId lets the
+    // bar keep the latest send's line when two overlap.
+    ctx.on("bridge:send", ({ handle, scope, uuid, selectionText, body, reqId }) => {
       const bound = boundSession();
       if (!bound) {
-        ctx.bus.emit("bridge:send-result", { ok: false, reason: "No session connected." });
+        const reason = "No session connected.";
+        ctx.bus.emit("bridge:send-result", { ok: false, reason, reqId });
+        ctx.bus.emit("bridge:send-lifecycle", { phase: "failed", target: "", reason, reqId });
         return;
       }
+      const target = labelFor(bound);
       const built = assemble(handle, scope, uuid, selectionText, body);
       if ("error" in built) {
-        ctx.bus.emit("bridge:send-result", { ok: false, reason: built.error });
+        ctx.bus.emit("bridge:send-result", { ok: false, reason: built.error, reqId });
+        ctx.bus.emit("bridge:send-lifecycle", { phase: "failed", target, reason: built.error, reqId });
         return;
       }
+      // Accepted — narrate the push it is about to make.
+      ctx.bus.emit("bridge:send-lifecycle", { phase: "sending", target, reqId });
       const id = crypto.randomUUID();
       void browser.runtime
         .sendMessage({
@@ -375,11 +419,20 @@ export const claudeCodeBridge: FeatureModule = {
             typeof reply === "object" && reply !== null
               ? ((reply as { reason?: unknown }).reason as string | undefined)
               : undefined;
-          ctx.bus.emit("bridge:send-result", ok ? { ok: true } : { ok: false, reason: reason ?? "nothing sent" });
+          if (ok) {
+            ctx.bus.emit("bridge:send-result", { ok: true, reqId });
+            ctx.bus.emit("bridge:send-lifecycle", { phase: "received", target, reqId });
+          } else {
+            const why = reason ?? "nothing sent";
+            ctx.bus.emit("bridge:send-result", { ok: false, reason: why, reqId });
+            ctx.bus.emit("bridge:send-lifecycle", { phase: "failed", target, reason: why, reqId });
+          }
         })
         .catch(() => {
           if (ctx.signal.aborted) return;
-          ctx.bus.emit("bridge:send-result", { ok: false, reason: "session disconnected — nothing sent" });
+          const reason = "session disconnected — nothing sent";
+          ctx.bus.emit("bridge:send-result", { ok: false, reason, reqId });
+          ctx.bus.emit("bridge:send-lifecycle", { phase: "failed", target, reason, reqId });
         });
     });
 

@@ -106,8 +106,9 @@ export function compileTheme(tokens: ThemeTokens, mode: Mode): string {
   }
 
   const src = tokens.modes[mode];
-  // basePalette pin: identical-halves presets (True Black) keep their one
-  // true base under either chosen mode — see the field's doc in tokens.ts.
+  // basePalette pin: an identical-halves preset can keep its one true base
+  // under either chosen mode — see the field's doc in tokens.ts. No shipped
+  // preset sets it now (True Black gained a distinct True White light half).
   const baseMode = tokens.basePalette ?? mode;
   const base = CLAUDE_PALETTE[baseMode];
 

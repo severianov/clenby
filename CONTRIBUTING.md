@@ -19,6 +19,7 @@ npm install
 | `npm run build` | Production Chrome (MV3) build → `chrome-extension-build/` |
 | `npm run build:firefox` | Production Firefox (MV2) build → `.output/firefox-mv2` |
 | `npm run compile` | Typecheck (`tsc --noEmit`) — the main quality gate |
+| `npm run lint` | Lint (ESLint flat config) — enforces the structural bans |
 | `npm test` | Run the test suite (`node --test`) |
 
 For `npm run dev`, load the unpacked output from `.output/chrome-mv3` at `chrome://extensions` once; WXT reloads it as you edit.
@@ -29,11 +30,10 @@ For `npm run dev`, load the unpacked output from `.output/chrome-mv3` at `chrome
 entrypoints/          WXT entrypoints — deliberately thin
   background.ts         extension background
   claude.content.ts     THE content script (claude.ai only); boots the runtime
-  popup/                toolbar popup
 src/
   core/               runtime, feature lifecycle, event bus, selector registry,
                       self-healing overrides, storage, conversation store
-  features/           one folder per feature (~40 of them) — all product logic
+  features/           one folder per feature (~30 of them) — all product logic
   api/                the claude.ai API client, endpoint registry, type guards
   theme/              theme engine, tokens, presets, structural CSS
   shared/             pure helpers (text, links, time, outline parsing)
@@ -63,7 +63,7 @@ Features never call global `setInterval`, `addEventListener`, or `new MutationOb
 2. All colors via CSS tokens. No hardcoded hex/rgb in feature styles, use the `--cc-*` custom properties from the theme engine so every feature works across all themes and light/dark modes automatically.
 3. All selectors via the registry. Never inline a `querySelector` string for a claude.ai element inside a feature. Add or reuse a named entry in `src/core/selectors.ts` and resolve it through `ctx.selectors`; that's what lets the self-healing override layer repair it later.
 4. All network via the API client. Endpoints are named entries in `src/api/endpoints.ts`; features call `ctx.api`, never `fetch` claude.ai URLs directly.
-5. No new permissions. `storage` + `https://claude.ai/*` (plus the optional, runtime-requested `api.anthropic.com`) is the complete permission surface. A PR that widens it needs prior discussion in an issue.
+5. No new permissions. `storage` + `alarms` + `https://claude.ai/*` (plus the optional, runtime-requested `api.anthropic.com` and `http://127.0.0.1/*` for the Claude Code bridge) is the complete permission surface. A PR that widens it needs prior discussion in an issue.
 6. No remote or dynamically executed code, ever. The self-healing layer is data-only by design; keep it that way.
 
 ## Adding a feature

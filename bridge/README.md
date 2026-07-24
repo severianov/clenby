@@ -28,7 +28,7 @@ npx clenby-bridge --rotate-token
 
 Running bridges keep the old token until restarted; re-pair once in the extension.
 
-To remove every trace of the bridge: **Forget** in the extension's gear menu (drops the pairing and the 127.0.0.1 grant), then:
+To remove every trace of the bridge: **`$ clenby unpair`** in the extension's gear menu (drops the pairing and the 127.0.0.1 grant), then:
 
 ```
 npx clenby-bridge remove-token

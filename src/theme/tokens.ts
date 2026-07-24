@@ -142,7 +142,7 @@ export interface ThemeTokens {
   id: string;
   name: string;
   /** The preset's IDENTITY color — the picker swatch dot (Off #666, Classic #c2c0b6, Book #e8ddc4,
-   *  Compact #7b8494, Focus #4a4a44, True Black #000, Code #007acc,
+   *  Compact #7b8494, Focus #4a4a44, True B&W #000, Code #007acc,
    *  WhatsApp #00a884). Curated data, NOT derived from surface tokens — it
    *  never varies with the active theme or mode. */
   swatch: string;
@@ -151,10 +151,12 @@ export interface ThemeTokens {
   swatchFg: string;
   style: ThemeStyle;
   /** Pin the compiler's claude.ai base-palette layer to ONE mode regardless
-   *  of the chosen themeMode. For presets whose two halves are deliberately
-   *  identical (True Black), the pin stops the other mode's base palette
-   *  from leaking through un-overridden vars (light danger/accent/border/
-   *  color-scheme on a black page). Absent = base follows the chosen mode. */
+   *  of the chosen themeMode. Intended for a preset whose two halves are
+   *  deliberately identical: the pin stops the other mode's base palette from
+   *  leaking through un-overridden vars (light danger/accent/border/color-
+   *  scheme on a dark page). No shipped preset sets it now — True Black used
+   *  it until it gained a distinct True White light half. Absent = base
+   *  follows the chosen mode. */
   basePalette?: "light" | "dark";
   typography: ThemeTypography;
   layout: ThemeLayout;
