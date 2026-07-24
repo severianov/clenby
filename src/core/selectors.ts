@@ -44,7 +44,16 @@ export const SELECTORS = {
     description: "user bubble surface (--msg-bubble-py lives here)",
   },
   codeBlockSurface: {
-    primary: ".font-claude-response pre > div",
+    // Verified live on claude.ai build abf2f5bc42 (2026-07-25). The shape
+    // INVERTED at some point before that build: it used to be
+    // `pre > div` (scroll div inside the pre); it is now
+    // `div.overflow-x-auto > pre.code-block__code`, so the old selector
+    // matched nothing and themed code blocks went unpainted — near-white ink
+    // on a light page. `.code-block__code` is a BEM-style component class,
+    // far more durable than claude's hashed utility classes; the bare `pre`
+    // fallback keeps the surface painted even if that class is renamed again.
+    primary: ".font-claude-response pre.code-block__code",
+    fallbacks: [".font-claude-response pre > div", ".font-claude-response pre"],
     description: "code block surface inside answers",
   },
   inlineCode: {
@@ -144,6 +153,26 @@ export type SelectorName = keyof typeof SELECTORS;
 /** Raw primary selector string — for CSS building (theme compiler) only. */
 export function sel(name: SelectorName): string {
   return SELECTORS[name].primary;
+}
+
+/**
+ * All candidates for a name as ONE css selector — `:is(primary, …fallbacks)`.
+ *
+ * Runtime queries try candidates in order and stop at the first hit, but CSS
+ * has no such loop: a generated rule built from {@link sel} alone silently
+ * stops applying the moment claude.ai moves the element, and the theme has no
+ * way to notice. A `:is()` union costs nothing for the arms that match
+ * nothing, so the stylesheet keeps painting through a DOM change that would
+ * otherwise need a release. `:is()` (not a comma list) because the compiler
+ * prefixes a mode scope — `html[data-mode="x"] a, b` would leak the second
+ * arm out of the scope — and because an arm the browser cannot parse is
+ * dropped on its own instead of invalidating the whole rule.
+ */
+export function selAll(name: SelectorName): string {
+  const entry: SelectorEntry = SELECTORS[name];
+  const fallbacks = entry.fallbacks ?? [];
+  if (fallbacks.length === 0) return entry.primary;
+  return `:is(${[entry.primary, ...fallbacks].join(", ")})`;
 }
 
 /** How often (per name) the matched element's ancestor path is re-captured

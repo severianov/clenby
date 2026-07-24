@@ -32,6 +32,8 @@
  * respected (CSS-gated animation, instant scrolls).
  */
 
+import { browser } from "wxt/browser";
+
 import type { FeatureContext, FeatureModule } from "@/core/feature";
 import type {
   EndpointOverride,
@@ -43,10 +45,19 @@ import { endpointDefaultTemplate } from "@/core/overrides";
 import { SELECTORS, type SelectorEntry, type SelectorName } from "@/core/selectors";
 import { API_VERSION, ENDPOINT_PARAMS, type EndpointName } from "@/api/endpoints";
 import { ownedEl } from "@/ui/root";
+import { prefersReducedMotion } from "@/ui/motion";
 import { relativeTime } from "@/shared/time";
+import { readClaudeBuild } from "@/shared/claude-build";
 import { SELECTOR_DEPS, ENDPOINT_DEPS, depsSummary } from "./deps";
 import { buildAlert, buildHealthPanel } from "./panel";
 import { createRepairController } from "./repair";
+import {
+  buildOverrideShare,
+  buildReport,
+  issueUrl,
+  type ReportAnchor,
+  type ReportInput,
+} from "./report";
 
 const OWNER = "selector-health";
 
@@ -54,6 +65,8 @@ const OWNER = "selector-health";
 const REFRESH_MS = 1500;
 /** How many affected features the alert names before eliding. */
 const ALERT_FEATURES_MAX = 4;
+/** How long a row's Share button holds its "✓ Copied" face. */
+const SHARE_FLASH_MS = 1800;
 
 const UNKNOWN_HEALTH: SelectorHealth = {
   state: "unknown",
@@ -260,6 +273,22 @@ export const selectorHealth: FeatureModule = {
         });
 
         const actTd = ownedEl("td", { owner: OWNER, className: "cc-sh-act" });
+        // A local repair is already validated against the live page — offer to
+        // hand it back so it can ship as a default instead of dying here.
+        if (row.override) {
+          actTd.append(
+            ownedEl("button", {
+              owner: OWNER,
+              className: "cc-btn",
+              text: "Share",
+              attrs: {
+                type: "button",
+                title: `Copy your ${row.name} override as markdown, ready to paste into an issue`,
+                "data-cc-act": "share",
+              },
+            }),
+          );
+        }
         if (row.health.state === "broken" || row.health.state === "fallback") {
           actTd.append(
             ownedEl("button", {
@@ -317,6 +346,20 @@ export const selectorHealth: FeatureModule = {
               type: "button",
               "data-cc-act": "repair",
               ...(first ? { "data-cc-anchor": entryKey(first) } : {}),
+            },
+          }),
+          // Secondary by design: repair fixes it for this user now, reporting
+          // fixes it for everyone next release. The panel body scrolls, so the
+          // footer is often below the fold — this jumps to it rather than
+          // duplicating the copy/issue choice up here.
+          ownedEl("button", {
+            owner: OWNER,
+            className: "cc-btn",
+            text: "Report…",
+            attrs: {
+              type: "button",
+              "data-cc-act": "report-jump",
+              title: "Jump to the report actions",
             },
           }),
         );
@@ -698,6 +741,15 @@ export const selectorHealth: FeatureModule = {
         renderEditor();
         return;
       }
+      if (act === "report-jump") {
+        // Anchor-free action — handled before parseTarget, like "cancel".
+        refs.reportCopyBtn.scrollIntoView({
+          block: "center",
+          behavior: prefersReducedMotion() ? "auto" : "smooth",
+        });
+        refs.reportCopyBtn.focus();
+        return;
+      }
       const target = parseTarget(
         btn.dataset["ccAnchor"] ?? btn.closest<HTMLElement>("[data-cc-anchor]")?.dataset["ccAnchor"],
       );
@@ -709,6 +761,33 @@ export const selectorHealth: FeatureModule = {
         else openEditorAt(target);
       } else if (act === "edit") {
         openEditorAt(target);
+      } else if (act === "share") {
+        const row = collectRows().find((r) => entryKey(r) === entryKey(target));
+        if (!row?.override) return;
+        const md = buildOverrideShare(row.name, row.ns, row.override, {
+          extVersion: browser.runtime.getManifest().version,
+          build: readClaudeBuild(),
+        });
+        // Feedback on the button itself — the row can be far from the footer
+        // readout, and a confirmation you have to go looking for is no
+        // confirmation.
+        const restore = btn.textContent ?? "Share";
+        void navigator.clipboard
+          .writeText(md)
+          .then(() => {
+            if (ctx.signal.aborted) return;
+            btn.textContent = "✓ Copied";
+          })
+          .catch(() => {
+            if (ctx.signal.aborted) return;
+            btn.textContent = "Clipboard blocked";
+          })
+          .finally(() => {
+            ctx.setTimeout(() => {
+              if (ctx.signal.aborted) return;
+              btn.textContent = restore;
+            }, SHARE_FLASH_MS);
+          });
       } else if (act === "reset") {
         const done =
           target.ns === "selectors"
@@ -818,6 +897,62 @@ export const selectorHealth: FeatureModule = {
       a.click();
       ctx.setTimeout(() => URL.revokeObjectURL(url), 5000);
       showEdStatus(`exported ${n} override${n === 1 ? "" : "s"}`, false);
+    });
+
+    // ---- diagnostic report -------------------------------------------------
+    // The ledger already knows what broke; this is the only step that was
+    // missing — getting it off this machine in a shape a maintainer can act
+    // on. Nothing is transmitted here: the text goes to the clipboard, or to a
+    // GitHub issue form the user reads and submits themselves.
+    const reportInput = (): ReportInput => ({
+      extVersion: browser.runtime.getManifest().version,
+      build: readClaudeBuild(),
+      anchors: collectRows().map(
+        (r): ReportAnchor => ({
+          ns: r.ns,
+          name: r.name,
+          kind: r.kind,
+          state: r.health.state,
+          lastMatchedVariant: r.health.lastMatchedVariant,
+          lastMatchedAt: r.health.lastMatchedAt,
+          matchCount: r.health.matchCount,
+          missStreak: r.health.missStreak,
+          lastMatchPath: r.health.lastMatchPath,
+          deps: r.deps,
+          overridden: r.override !== undefined,
+        }),
+      ),
+    });
+
+    const showReportStatus = (text: string, bad: boolean): void => {
+      refs.reportStatus.textContent = text;
+      refs.reportStatus.classList.toggle("cc-sh-foot-status-bad", bad);
+      refs.reportStatus.classList.remove("cc-hidden");
+    };
+
+    ctx.listen(refs.reportCopyBtn, "click", () => {
+      const text = buildReport(reportInput());
+      void navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          if (ctx.signal.aborted) return;
+          showReportStatus("✓ Report copied — paste it into a GitHub issue.", false);
+        })
+        .catch(() => {
+          if (ctx.signal.aborted) return;
+          // Clipboard can be blocked by permissions policy; the issue button
+          // still works because it carries the report in the URL.
+          showReportStatus(
+            'Clipboard was blocked — use "Open a GitHub issue" instead, it carries the report with it.',
+            true,
+          );
+        });
+    });
+
+    ctx.listen(refs.reportIssueBtn, "click", () => {
+      const input = reportInput();
+      window.open(issueUrl(input, buildReport(input)), "_blank", "noopener");
+      showReportStatus("Issue opened in a new tab — review it, then submit.", false);
     });
 
     ctx.listen(refs.importBtn, "click", () => refs.fileInput.click());

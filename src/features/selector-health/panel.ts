@@ -34,6 +34,13 @@ export interface HealthPanelRefs {
   edStatus: HTMLDivElement;
   /** The merged-anchors editor list host. */
   edHost: HTMLDivElement;
+  /** Report actions — always present, not only when something is broken: a
+   *  feature can misbehave while every anchor still reports healthy, and that
+   *  report is the most interesting one to receive. */
+  reportCopyBtn: HTMLButtonElement;
+  reportIssueBtn: HTMLButtonElement;
+  /** One-line copy/open readout (hidden until used). */
+  reportStatus: HTMLDivElement;
 }
 
 const DASH_COLUMNS: readonly string[] = ["Anchor", "Status", "Used by", "Last matched", ""];
@@ -130,7 +137,43 @@ export function buildHealthPanel(owner: string): HealthPanelRefs {
   });
   edCard.append(edHead, edStatus, edHost, edNote);
 
-  body.append(bannerHost, repairHost, dashCard, edCard);
+  // ---- report footer -------------------------------------------------------
+  // Deliberately the last thing in the panel: repair first (fixes it now for
+  // this user), report second (fixes it for everyone). Nothing is ever sent —
+  // both buttons hand the text to the user, who submits it themselves.
+  const foot = ownedEl("div", { owner, className: "cc-sh-foot" });
+  const reportCopyBtn = ownedEl("button", {
+    owner,
+    className: "cc-btn",
+    text: "Copy report",
+    attrs: { type: "button", title: "Copy the diagnostic report to your clipboard" },
+  });
+  const reportIssueBtn = ownedEl("button", {
+    owner,
+    className: "cc-sh-btn-accent",
+    text: "Open a GitHub issue ↗",
+    attrs: {
+      type: "button",
+      title: "Open a prefilled issue on the Clenby repository — you review and submit it",
+    },
+  });
+  foot.append(
+    ownedEl("span", { owner, className: "cc-sh-foot-t", text: "Report a break" }),
+    ownedEl("span", {
+      owner,
+      className: "cc-sh-foot-d",
+      text: "anchor names, health counters and element paths only — never message text",
+    }),
+    reportCopyBtn,
+    reportIssueBtn,
+  );
+  const reportStatus = ownedEl("div", {
+    owner,
+    className: "cc-sh-foot-status cc-hidden",
+    attrs: { role: "status" },
+  });
+
+  body.append(bannerHost, repairHost, dashCard, edCard, foot, reportStatus);
   panel.append(head, body);
 
   return {
@@ -146,6 +189,9 @@ export function buildHealthPanel(owner: string): HealthPanelRefs {
     fileInput,
     edStatus,
     edHost,
+    reportCopyBtn,
+    reportIssueBtn,
+    reportStatus,
   };
 }
 

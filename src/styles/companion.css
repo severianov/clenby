@@ -532,8 +532,12 @@ html.cc-has-status button[aria-label="Scroll to bottom"] {
   color: var(--cc-accent);
 }
 
-/* Actions zone — Selector-health status row (live degraded count right). */
-.cc-gear-health {
+/* Actions zone — Selector-health status row (live degraded count right) and
+ * the Keyboard-shortcuts row (live key chips right). Same shape: icon + name
+ * + right-aligned metadata slot; only the icon color differs (status vs
+ * launcher). */
+.cc-gear-health,
+.cc-gear-keys {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -551,18 +555,30 @@ html.cc-has-status button[aria-label="Scroll to bottom"] {
     background-color 0.13s,
     border-color 0.13s;
 }
-.cc-gear-health:hover {
+.cc-gear-health:hover,
+.cc-gear-keys:hover {
   background: var(--cc-surface-raised-2);
   border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
 }
-.cc-gear-health:focus-visible {
+.cc-gear-health:focus-visible,
+.cc-gear-keys:focus-visible {
   outline: 2px solid var(--cc-accent);
   outline-offset: 1px;
 }
 .cc-gear-health svg {
   color: var(--cc-ok);
 }
-.cc-gear-health-name {
+/* Health reads as a status light; the shortcuts row is a launcher, matching
+   the tile grid directly above it. */
+.cc-gear-keys svg {
+  color: var(--cc-accent);
+}
+/* Same right-aligned metadata slot as .cc-gear-health-count. */
+.cc-gear-keys .cc-kbd-set {
+  margin-left: auto;
+}
+.cc-gear-health-name,
+.cc-gear-keys-name {
   color: var(--cc-text);
   font-weight: 600;
 }
@@ -570,6 +586,53 @@ html.cc-has-status button[aria-label="Scroll to bottom"] {
   margin-left: auto;
   font: 10px var(--cc-mono, monospace);
   color: var(--cc-text-faint);
+}
+
+/* Key chips — every place Clenby prints a keystroke (@/ui/kbd.ts). Derived
+ * from the shipped inline-code chip so a chip reads as "something you type"
+ * on all eight presets in both modes with no per-theme patching; the heavier
+ * bottom border is the only addition — a key is a physical thing. No accent,
+ * so True B&W is correct for free. */
+.cc-kbd {
+  display: inline-block;
+  min-width: 14px;
+  padding: 1px 4px;
+  border: 1px solid var(--cc-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--cc-surface-raised-2, var(--cc-surface-raised));
+  color: var(--cc-text-muted);
+  font: 10px/1.4 var(--cc-mono, monospace);
+  text-align: center;
+  white-space: nowrap;
+}
+.cc-kbd-set {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 3px;
+}
+/* "Either key" separator (Space / Enter) — bare adjacency reads as "press
+   both". */
+.cc-kbd-or {
+  color: var(--cc-text-faint);
+  font: 10px var(--cc-mono, monospace);
+}
+
+/* Screen-reader-only text: the spoken chord that accompanies an aria-hidden
+ * chip set inside a <dd> (a <dd>'s role does not support a reliable
+ * aria-label). NOT display:none — that would hide it from AT too.
+ * NOTE: the `cc-sr-*` prefix is taken by selector-health/repair.ts. */
+.cc-vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Toggles zone — switch rows: name + one-line desc left, track right.
@@ -651,6 +714,7 @@ html.cc-has-status button[aria-label="Scroll to bottom"] {
   .cc-gear-seg-btn,
   .cc-gear-tile,
   .cc-gear-health,
+  .cc-gear-keys,
   .cc-gear-toggle,
   .cc-gear-sw-track,
   .cc-gear-sw-track::after {
@@ -1643,7 +1707,8 @@ mark.cc-mark {
   padding: 9px 12px;
 }
 
-.cc-pal-list {
+.cc-pal-list,
+.cc-pal-ref-list {
   max-height: 48vh;
   overflow-y: auto;
   margin-top: 8px;
@@ -1685,6 +1750,58 @@ mark.cc-mark {
 .cc-pal-empty {
   padding: 10px 8px;
   color: var(--cc-text-faint);
+}
+
+/* Shortcuts reference — the palette's second mode. Rows are a description
+ * list: dt = what it does, dd = the keys. Group headings reuse .cc-pal-group
+ * (they sit OUTSIDE the <dl> — a heading may not live inside one). */
+.cc-pal-ref-dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin: 0;
+  padding: 0;
+}
+.cc-pal-ref-dl > dt,
+.cc-pal-ref-dl > dd {
+  margin: 0;
+  padding: 5px 8px;
+}
+.cc-pal-ref-act {
+  color: var(--cc-text);
+}
+.cc-pal-ref-note {
+  margin-top: 1px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--cc-text-faint);
+}
+/* Standing footnote — deliberately NOT .cc-pal-empty, which means "no
+   results" and would read as a bug beside real rows. */
+.cc-pal-ref-foot {
+  margin-top: 6px;
+  padding: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--cc-text-faint);
+}
+
+/* One-line mono legend under the list, edge to edge against #cc-palette's
+ * 10px padding. Leads with the chord that opens the palette: a user who
+ * clicked their way in leaves knowing the key. */
+.cc-pal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin: 8px -10px -10px;
+  padding: 7px 14px 9px;
+  border-top: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+  font: 10px var(--cc-mono, monospace);
+  color: var(--cc-text-faint);
+  letter-spacing: 0.01em;
 }
 
 /* Status-bar: brighter inner definition (border + text); flat — no shadow/depth,
@@ -4276,6 +4393,39 @@ p > .cc-clk-box {
   color: var(--cc-text-faint);
   font-size: 10.5px;
   border-top: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+}
+
+/* report footer — the diagnostic hand-off row (copy / prefilled issue).
+ * Quiet by default: this is the end of the panel, not a call to action
+ * competing with Repair. */
+.cc-sh-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  border: 1px solid var(--cc-border);
+  border-radius: 10px;
+  background: var(--cc-surface-raised);
+}
+.cc-sh-foot-t {
+  font-size: 12px;
+  font-weight: 600;
+}
+.cc-sh-foot-d {
+  flex: 1;
+  min-width: 180px;
+  font-size: 10.5px;
+  color: var(--cc-text-faint);
+}
+.cc-sh-foot-status {
+  margin-top: -6px;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--cc-ok);
+}
+.cc-sh-foot-status-bad {
+  color: var(--cc-danger);
 }
 
 /* gear-menu degraded count */

@@ -30,9 +30,16 @@ What you expected instead.
 
 **Selector health**
 
-If a feature stopped attaching, what does the selector-health panel report?
-(claude.ai ships UI changes without notice — this usually pinpoints the broken
-anchor immediately.)
+If a feature stopped attaching, open the selector-health panel (gear menu →
+Self-healing, or the command palette → "Selector health") and press **Copy
+report**, then paste it here. That one block carries the anchor states, the
+claude.ai build id and your browser — everything needed to reproduce it.
+
+**Open a GitHub issue ↗** in the same panel does this for you: it opens this
+form already filled in.
+
+The report contains anchor names, health counters and structural element paths
+only — no message text, conversation titles or URLs.
 
 **Screenshots / console output**
 

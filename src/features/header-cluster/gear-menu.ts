@@ -15,10 +15,12 @@
  *   follows the page) + the
  *   [A− | label | A+ | ↺] text-size stepper writing theme TWEAKS.
  * - ACTIONS — Fold/Unfold SEGMENTED PAIR (bus "fold:all"), an ICON-TILE
- *   launcher (Find — a bus toggle; conversation-scoped consumers are quiet
- *   no-ops outside a chat; pop-out lives on the answer toolbar, not here),
- *   a Selector-health status row with the live degraded count, and the
- *   export slot (`#cc-gear-export-slot`) the export feature fills on every
+ *   launcher (Palette, Find — bus toggles; conversation-scoped consumers are
+ *   quiet no-ops outside a chat; pop-out lives on the answer toolbar, not
+ *   here), the KEYBOARD-SHORTCUTS row (prints the palette chord on its face
+ *   and opens the palette's shortcuts reference — @/shared/keymap is the
+ *   single source for every chord in the product), a Selector-health status
+ *   row with the live degraded count, and the export slot (`#cc-gear-export-slot`) the export feature fills on every
  *   open (features never import features; discovery is by stable id + bus).
  * - TOGGLES — SWITCH rows (name + one-line description, role="switch")
  *   grouped Composer / Trust / Data / Repair / Memory. Each writes its
@@ -36,6 +38,14 @@ import { browser } from "wxt/browser";
 import type { FeatureContext } from "@/core/feature";
 import type { CompanionSettings } from "@/core/storage";
 import { ownedEl } from "@/ui/root";
+import { kbdSet } from "@/ui/kbd";
+import {
+  ariaKeyShortcuts,
+  chordOf,
+  chordSpoken,
+  chordText,
+  type Chord,
+} from "@/shared/keymap";
 import { PRESET_LIST, DEFAULT_PRESET_ID } from "@/theme/presets";
 import { cssColor } from "@/theme/compile";
 import type { ThemeModeSetting, ThemeTokens } from "@/theme/tokens";
@@ -64,6 +74,11 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 type BoolSettingKey = {
   [K in keyof CompanionSettings]: CompanionSettings[K] extends boolean ? K : never;
 }[keyof CompanionSettings];
+
+/** lucide `command` — the palette glyph. Shared with ./index.ts's cluster
+ *  button so the tile, the shortcuts row and the header button are one mark. */
+export const COMMAND_ICON_PATH =
+  "M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3";
 
 /** Lucide-style line icon (stroke: currentColor) — same idiom as the
  *  cluster buttons in ./index.ts. `shapes` are [tag, attrs]. */
@@ -108,6 +123,7 @@ const icons = {
       ["circle", { cx: "11", cy: "11", r: "8" }],
       ["path", { d: "m21 21-4.3-4.3" }],
     ]),
+  command: (): SVGSVGElement => lineIcon([["path", { d: COMMAND_ICON_PATH }]]),
   health: (): SVGSVGElement =>
     lineIcon([
       [
@@ -152,7 +168,8 @@ const TOGGLE_GROUPS: ReadonlyArray<{
       {
         key: "enterToNewline",
         name: "Enter = newline",
-        desc: "Enter inserts a newline; Ctrl/Cmd+Enter sends",
+        // Chord text from @/shared/keymap — one spelling, everywhere.
+        desc: `Enter inserts a newline · ${chordText(chordOf("enterSend"))} sends`,
       },
     ],
   },
@@ -399,25 +416,77 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
 
   // Icon-tile launcher. Every tile is a bus toggle; the owning features hold
   // the panels/overlays (conversation-scoped ones are quiet no-ops outside a
-  // chat).
+  // chat). A tile with a chord announces it (aria-label + aria-keyshortcuts)
+  // but does NOT print it: the cell is ~79px wide and a chip would overflow.
+  // The chord is printed full-width on the shortcuts row just below.
   const tiles = ownedEl("div", { owner: OWNER, className: "cc-gear-tiles" });
-  const tile = (icon: SVGSVGElement, text: string, title: string): HTMLButtonElement => {
+  const tile = (
+    icon: SVGSVGElement,
+    text: string,
+    title: string,
+    chord?: Chord,
+  ): HTMLButtonElement => {
     const b = ownedEl("button", {
       owner: OWNER,
       className: "cc-gear-tile",
       attrs: { type: "button", title },
     });
     b.append(icon, ownedEl("span", { owner: OWNER, text }));
+    if (chord) {
+      b.setAttribute("aria-label", `${text} — ${chordSpoken(chord)}`);
+      b.setAttribute("aria-keyshortcuts", ariaKeyShortcuts(chord));
+    }
     return b;
   };
+  // The palette had NO gear entry at all, and its only label anywhere was a
+  // tooltip on an unlabelled glyph. The grid is repeat(3,1fr) holding one
+  // tile — this fills a free cell, so it costs zero height.
+  const paletteTile = tile(
+    icons.command(),
+    "Palette",
+    `Command palette — jump to any chat or message, run any action (${chordText(
+      chordOf("palette"),
+    )})`,
+    chordOf("palette"),
+  );
   const findTile = tile(
     icons.find(),
     "Find",
-    "Find in conversation — searches every message, even ones not on screen (Ctrl/Cmd+Shift+F)",
+    `Find in conversation — searches every message, even ones not on screen (${chordText(
+      chordOf("find"),
+    )})`,
+    chordOf("find"),
   );
+  ctx.listen(paletteTile, "click", () => ctx.bus.emit("ui:palette-toggle", {}));
   ctx.listen(findTile, "click", () => ctx.bus.emit("ui:find-toggle", {}));
-  tiles.append(findTile);
+  tiles.append(paletteTile, findTile);
   actions.append(tiles);
+
+  // Keyboard shortcuts — the ONE place the gear PRINTS a chord.
+  // RULE: the chips live on the FACE. Never replace them with the bare word
+  // "Shortcuts", and never demote them into the tooltip — a hover-only chord
+  // is the exact problem this row exists to fix. Geometry is the
+  // selector-health row's (joined in companion.css: icon + name +
+  // right-aligned metadata slot). Click opens the command palette on its
+  // shortcuts reference (bus — features never import features).
+  const paletteChord = chordOf("palette");
+  const keysBtn = ownedEl("button", {
+    owner: OWNER,
+    className: "cc-gear-keys",
+    attrs: {
+      type: "button",
+      title: `Every key Clenby binds (${chordText(paletteChord)})`,
+      "aria-label": `Keyboard shortcuts — ${chordSpoken(paletteChord)} opens the command palette`,
+      "aria-keyshortcuts": ariaKeyShortcuts(paletteChord),
+    },
+  });
+  keysBtn.append(
+    icons.command(),
+    ownedEl("span", { owner: OWNER, className: "cc-gear-keys-name", text: "Keyboard shortcuts" }),
+    kbdSet(OWNER, paletteChord),
+  );
+  ctx.listen(keysBtn, "click", () => ctx.bus.emit("ui:palette-shortcuts", {}));
+  actions.append(keysBtn);
 
   // Selector-health status row — the selector-health feature owns the
   // dashboard panel; this row emits the bus toggle (session-scoped

@@ -4,7 +4,7 @@
  * All logic lives in src/; this file stays thin.
  */
 
-import { defineContentScript } from "wxt/sandbox";
+import { defineContentScript } from "wxt/utils/define-content-script";
 import { browser } from "wxt/browser";
 import { CompanionRuntime } from "@/core/runtime";
 import companionCss from "@/styles/companion.css?inline";

@@ -1,0 +1,109 @@
+name: Publish clenby-bridge
+
+# Publishes the npm package with build provenance, via npm Trusted Publishing.
+#
+# WHY THIS EXISTS: the bridge asks people to run a local server and pair it to
+# their browser, and `clenby-bridge audit` tells them to "compare against the
+# tagged release". Provenance is what makes that checkable without taking our
+# word for it — npm records a signed attestation binding this tarball to this
+# repository, this commit and this workflow run, and `npm audit signatures`
+# verifies it in the user's own npm client rather than in our code.
+#
+# NO NPM_TOKEN. Trusted Publishing exchanges the workflow's OIDC token for a
+# short-lived, workflow-scoped credential, which is why `id-token: write` is
+# required below. Provenance is generated automatically on this path — the
+# `--provenance` flag is not needed and is deliberately absent.
+#
+# ONE-TIME SETUP on npmjs.com (see the repo's release notes):
+#   Package settings → Trusted Publisher → GitHub Actions
+#     organization/user: severianov
+#     repository:        clenby
+#     workflow filename: publish-bridge.yml     ← must match this file's name
+# Renaming this file breaks publishing until the npm side is updated to match.
+#
+# RELEASING: bump bridge/package.json, commit, then tag `bridge-v<version>`
+# and push the tag. The version in the tag and in package.json must agree —
+# the job refuses to publish otherwise. The `bridge-` prefix keeps the npm
+# package's tags distinct from the extension's own releases in this repo.
+
+on:
+  push:
+    tags:
+      - "bridge-v*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or ref to validate (dry run only — never publishes)"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write # required: OIDC token for Trusted Publishing
+  contents: read
+
+jobs:
+  publish:
+    name: Verify and publish
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - uses: actions/setup-node@v5
+        with:
+          # Node 24 ships an npm new enough for Trusted Publishing
+          # (needs npm >= 11.5.1, node >= 22.14.0).
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          # Never cache in a release build — the artifact must come from a
+          # clean resolve, not from whatever a previous run left behind.
+          package-manager-cache: false
+
+      - name: Check npm is new enough for Trusted Publishing
+        run: |
+          set -euo pipefail
+          v=$(npm --version)
+          min=11.5.1
+          echo "npm ${v} (need >= ${min})"
+          # sort -V puts the lower version first; if that is not ${min}, the
+          # runner's npm predates OIDC publishing and would fall back to
+          # token auth we deliberately do not configure.
+          if [ "$(printf '%s\n%s\n' "$min" "$v" | sort -V | head -n1)" != "$min" ]; then
+            echo "::error::npm ${v} is too old for Trusted Publishing (need >= ${min}). Raise node-version."
+            exit 1
+          fi
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Tag and package.json versions must agree
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          pkg=$(node -p "require('./package.json').version")
+          want="bridge-v${pkg}"
+          if [ "$TAG" != "$want" ]; then
+            echo "::error::Tag ${TAG} does not match bridge/package.json ${pkg} (expected ${want})."
+            echo "Bump the version, commit, then retag — publishing the wrong version is not undoable."
+            exit 1
+          fi
+          echo "Publishing clenby-bridge@${pkg} from ${TAG}"
+
+      - name: Show exactly what will ship
+        run: npm pack --dry-run
+
+      - name: Publish
+        # Tag pushes only. workflow_dispatch is a dry run by design: it proves
+        # the tarball builds and the tests pass without a publish that cannot
+        # be taken back.
+        if: startsWith(github.ref, 'refs/tags/')
+        run: npm publish

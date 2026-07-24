@@ -31,7 +31,7 @@
  * page's actual mode — each half under its own scope.
  */
 
-import { sel } from "@/core/selectors";
+import { sel, selAll } from "@/core/selectors";
 import { CLAUDE_PALETTE, basePaletteDecls, cdsDecls } from "./claude-palette";
 import type { CompanionTokens, SurfaceTokens, ThemeTokens } from "./tokens";
 
@@ -54,7 +54,12 @@ const USER_MSG = sel("userMessage");
 const COMPOSER = sel("composerInput");
 const CHAT_TITLE = sel("chatTitle");
 const USER_BUBBLE = sel("userBubble"); // .bg-bg-300
-const CODE_BLOCK = sel("codeBlockSurface");
+// The code surface is the one anchor a theme cannot afford to lose silently:
+// when it stops matching, the block goes UNPAINTED and claude's real-mode ink
+// (see the carve-out in compileTheme) lands on the themed page — near-white
+// code on a light page. Emit every candidate so a DOM change degrades instead
+// of disappearing.
+const CODE_BLOCK = selAll("codeBlockSurface");
 const INLINE_CODE = sel("inlineCode");
 const COLUMN = sel("conversationColumn");
 const MAIN = sel("mainContent");

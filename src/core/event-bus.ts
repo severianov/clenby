@@ -41,6 +41,14 @@ export interface CompanionEvents {
   /** Toggle the command palette (header-cluster button; the palette also
    *  listens for Ctrl/Cmd+Shift+K itself). */
   "ui:palette-toggle": Record<string, never>;
+  /**
+   * Open the command palette straight into its SHORTCUTS reference — the one
+   * place every key Clenby binds is listed. Emitted by the gear menu's
+   * Keyboard-shortcuts row. The palette is a session-scoped subscriber, so
+   * the emit always lands. Separate from "ui:palette-toggle" because it must
+   * force the panel OPEN and into a mode, never toggle it shut.
+   */
+  "ui:palette-shortcuts": Record<string, never>;
   /** Open the gear menu, scroll to the Claude Code card, expand setup, flash
    *  it — emitted by the composer chip when the bridge isn't paired yet. */
   "ui:bridge-setup": Record<string, never>;

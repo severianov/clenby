@@ -30,7 +30,8 @@
 import { browser } from "wxt/browser";
 import type { FeatureContext, FeatureModule } from "@/core/feature";
 import { ownedEl, setGeometry } from "@/ui/root";
-import { buildGearMenu } from "./gear-menu";
+import { buildGearMenu, COMMAND_ICON_PATH } from "./gear-menu";
+import { ariaKeyShortcuts, chordOf, chordText } from "@/shared/keymap";
 
 const OWNER = "header-cluster";
 
@@ -78,14 +79,10 @@ function squarePenIcon(): SVGSVGElement {
   ]);
 }
 
-/** lucide `command` — the command-palette button. */
+/** lucide `command` — the command-palette button (path shared with the gear
+ *  menu's Palette tile and shortcuts row). */
 function commandIcon(): SVGSVGElement {
-  return lineIcon([
-    [
-      "path",
-      { d: "M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" },
-    ],
-  ]);
+  return lineIcon([["path", { d: COMMAND_ICON_PATH }]]);
 }
 
 /** lucide `settings` — the gear button. */
@@ -126,11 +123,17 @@ export const headerCluster: FeatureModule = {
 
     const notesBtn = iconBtn("cc-btn-notes", "Chat notes", squarePenIcon());
     const gearBtn = iconBtn("cc-btn-gear", "Clenby — themes & tools", settingsIcon());
+    // `iconBtn` writes the same string to title AND aria-label, so the clean
+    // spoken name needs a post-hoc override: chord in `title`, plain name in
+    // `aria-label`, chord in the attribute that exists for it.
+    const paletteChord = chordOf("palette");
     const paletteBtn = iconBtn(
       "cc-btn-palette",
-      "Command palette (Ctrl+Shift+K / ⌘⇧K)",
+      `Command palette (${chordText(paletteChord)})`,
       commandIcon(),
     );
+    paletteBtn.setAttribute("aria-label", "Command palette");
+    paletteBtn.setAttribute("aria-keyshortcuts", ariaKeyShortcuts(paletteChord));
     paletteBtn.removeAttribute("aria-haspopup"); // not a dropdown — an overlay toggle
     cluster.append(paletteBtn, notesBtn, gearBtn);
     ctx.root.appendChild(cluster);
@@ -285,6 +288,10 @@ export const headerCluster: FeatureModule = {
     // Composer-chip shortcut (bus, cross-feature): open the gear menu, then
     // scroll to and flash the Claude Code card so the user lands EXACTLY on
     // the thing they clicked for — not at the top of a long panel.
+    // The palette overlays this menu — get out of its way whichever entry
+    // point opened it (⌘ button, gear Palette tile, gear shortcuts row).
+    ctx.on("ui:palette-toggle", () => closeAll());
+    ctx.on("ui:palette-shortcuts", () => closeAll());
     ctx.on("ui:bridge-setup", () => {
       if (popTools.classList.contains("cc-hidden")) {
         if (cluster.classList.contains("cc-hidden")) {

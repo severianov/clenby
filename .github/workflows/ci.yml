@@ -3,6 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    # The canary commits its own state file hourly; nothing it writes can
+    # affect a build (it also tags those commits [skip ci] — belt and braces).
+    paths-ignore:
+      - ".github/claude-build.json"
   pull_request:
 
 jobs:

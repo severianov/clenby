@@ -40,6 +40,7 @@
 import type { FeatureContext, FeatureModule } from "@/core/feature";
 import type { IndexedMessage } from "@/core/conversation-store";
 import { ownedEl } from "@/ui/root";
+import { chordOf, chordSpoken, chordText } from "@/shared/keymap";
 
 const OWNER = "find-in-conversation";
 
@@ -156,15 +157,27 @@ export const findInConversation: FeatureModule = {
       className: "cc-find-count",
       attrs: { "aria-live": "polite" },
     });
-    const navBtn = (text: string, title: string): HTMLButtonElement =>
+    // `title` carries the platform's printed chord; `aria-label` carries the
+    // spoken form — "⇧Enter" read literally is noise (@/shared/keymap).
+    const navBtn = (text: string, title: string, label = title): HTMLButtonElement =>
       ownedEl("button", {
         owner: OWNER,
         className: "cc-btn cc-find-btn",
         text,
-        attrs: { type: "button", title, "aria-label": title },
+        attrs: { type: "button", title, "aria-label": label },
       });
-    const prevBtn = navBtn("↑", "Previous match (Shift+Enter)");
-    const nextBtn = navBtn("↓", "Next match (Enter)");
+    const prevChord = chordOf("findPrev");
+    const nextChord = chordOf("findNext");
+    const prevBtn = navBtn(
+      "↑",
+      `Previous match (${chordText(prevChord)})`,
+      `Previous match, ${chordSpoken(prevChord)}`,
+    );
+    const nextBtn = navBtn(
+      "↓",
+      `Next match (${chordText(nextChord)})`,
+      `Next match, ${chordSpoken(nextChord)}`,
+    );
     const caseBtn = navBtn("Aa", "Match case");
     caseBtn.setAttribute("aria-pressed", "false");
     const wordBtn = navBtn("|ab|", "Whole word");

@@ -4,8 +4,10 @@ import { defineConfig } from "wxt";
 //
 // Layout note: `entrypoints/` sits at the repo root while all other code lives
 // under `src/`. WXT force-binds the `@` alias to srcDir (resolve-config.mjs),
-// so srcDir MUST be "src" for `@/core/feature` imports to work; entrypointsDir
-// points back up to the repo-top `entrypoints/`, and publicDir likewise.
+// so srcDir MUST be "src" for `@/core/feature` imports to work. `entrypointsDir`
+// still resolves relative to srcDir, so "../entrypoints" points back up to the
+// repo-top `entrypoints/`. NOTE (WXT 0.20): `publicDir` now resolves relative to
+// the project ROOT (it was srcDir-relative in 0.19), so it is plain "public".
 //
 // Permissions are intentionally minimal: `storage` is the ONLY API permission
 // and `https://claude.ai/*` is the ONLY baseline host permission. No
@@ -22,8 +24,17 @@ import { defineConfig } from "wxt";
 export default defineConfig({
   srcDir: "src",
   entrypointsDir: "../entrypoints",
-  publicDir: "../public",
+  publicDir: "public",
   outDir: ".output",
+
+  // WXT 0.20 dropped the bundled webextension-polyfill, so `browser` from
+  // "wxt/browser" would become the raw async API. This extension depends on
+  // promise-based `runtime.onMessage` responses (the background request/response
+  // relays for the Claude Code bridge and the selector-repair tier), which the
+  // raw Chrome API does not support. Re-registering the polyfill module aliases
+  // "wxt/browser" back to the polyfill and restores the exact 0.19 `browser`
+  // semantics — no behavior change.
+  modules: ["@wxt-dev/webextension-polyfill"],
 
   // Chrome builds MV3; Firefox builds MV2 (WXT default for `-b firefox`).
   // MV2 on Firefox is deliberate: Firefox MV3 makes host

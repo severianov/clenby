@@ -1,0 +1,239 @@
+name: claude.ai canary
+
+# Watches claude.ai's published build identity so a UI change is noticed here
+# before it arrives as a user report. The extension carries no telemetry and
+# never will — this asks claude.ai directly instead of asking our users.
+#
+# https://claude.ai/new serves the app shell to an unauthenticated client
+# (unlike / and /login, which 403), and that shell carries data-build-id,
+# data-git-hash, data-color-version and the content-hashed bundle filename.
+# Any of those moving means "go look"; none of them means "something broke".
+#
+# State lives in .github/claude-build.json, committed by this workflow with
+# [skip ci] so it never triggers the CI matrix.
+#
+# Issue bodies are assembled with printf and single-quoted format strings:
+# remote values are passed as ARGUMENTS, never interpolated into shell, YAML or
+# a format string. Everything they touch is also charset-clamped on extraction.
+
+on:
+  schedule:
+    # Hourly, offset off the hour to avoid the scheduler's peak-minute queue.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: claude-canary
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Probe claude.ai build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fetch and compare
+        id: probe
+        env:
+          STATE: .github/claude-build.json
+          # Consecutive failed probes before we assume the canary itself is
+          # broken (blocked runner IP, changed markup) rather than claude.ai
+          # being quiet. 6 = roughly six hours.
+          BLIND_AFTER: 6
+        run: |
+          set -euo pipefail
+
+          UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+
+          html=''
+          if ! html=$(curl -sSL --max-time 30 --retry 2 --retry-delay 5 -A "$UA" https://claude.ai/new); then
+            html=''
+          fi
+
+          # Every value below is attacker-controlled in principle (it comes off
+          # a remote page) and ends up in a JSON file, a commit message and an
+          # issue body. Clamp to the charset these fields actually use and cap
+          # the length, exactly as src/shared/claude-build.ts does on the page
+          # side — no newlines to forge a GITHUB_OUTPUT line, no metacharacters.
+          safe() { tr -cd 'A-Za-z0-9._-' | cut -c1-64; }
+          pick() { grep -o "$1" <<<"$html" | head -1 | sed 's/.*="//; s/"$//' | safe || true; }
+
+          build_id=$(pick 'data-build-id="[^"]*"')
+          git_hash=$(pick 'data-git-hash="[^"]*"')
+          color_ver=$(pick 'data-color-version="[^"]*"')
+          bundle=$(grep -o 'assets/v1/[A-Za-z0-9._-]*\.js' <<<"$html" | head -1 | sed 's|.*/||' | safe || true)
+
+          prev_build=''; prev_hash=''; prev_color=''; prev_bundle=''; failures=0
+          if [ -f "$STATE" ]; then
+            prev_build=$(jq -r '.buildId // ""'      "$STATE")
+            prev_hash=$(jq -r  '.gitHash // ""'      "$STATE")
+            prev_color=$(jq -r '.colorVersion // ""' "$STATE")
+            prev_bundle=$(jq -r '.bundle // ""'      "$STATE")
+            failures=$(jq -r   '.failures // 0'      "$STATE")
+          fi
+
+          # ---- probe failed: never overwrite good state with nothing --------
+          if [ -z "$build_id" ]; then
+            failures=$((failures + 1))
+            echo "::warning::Could not read a build id from claude.ai/new (consecutive failures: $failures)"
+            if [ -f "$STATE" ]; then
+              tmp=$(mktemp)
+              jq --argjson f "$failures" '.failures = $f' "$STATE" > "$tmp" && mv "$tmp" "$STATE"
+            fi
+            if [ "$failures" -ge "$BLIND_AFTER" ] && [ "$((failures % BLIND_AFTER))" -eq 0 ]; then
+              echo "blind=true" >> "$GITHUB_OUTPUT"
+              echo "failures=$failures" >> "$GITHUB_OUTPUT"
+            fi
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "firstRun=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # ---- probe succeeded ---------------------------------------------
+          changed=false
+          if [ -n "$prev_build" ] && {
+               [ "$build_id" != "$prev_build" ] ||
+               [ "$git_hash" != "$prev_hash" ] ||
+               [ "$bundle"   != "$prev_bundle" ]; }; then
+            changed=true
+          fi
+
+          # First run records silently: there is no "previous" to have moved.
+          first_run=false
+          [ -z "$prev_build" ] && first_run=true
+
+          jq -n \
+            --arg b "$build_id" --arg g "$git_hash" --arg c "$color_ver" \
+            --arg u "$bundle"   --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{buildId:$b, gitHash:$g, colorVersion:$c, bundle:$u, seenAt:$t, failures:0}' \
+            > "$STATE"
+
+          {
+            echo "changed=$changed"
+            echo "firstRun=$first_run"
+            echo "buildId=$build_id"
+            echo "gitHash=$git_hash"
+            echo "colorVersion=$color_ver"
+            echo "bundle=$bundle"
+            echo "prevBuild=$prev_build"
+            echo "prevHash=$prev_hash"
+            echo "prevColor=$prev_color"
+            echo "prevBundle=$prev_bundle"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "claude.ai build $build_id (was ${prev_build:-none}) · changed=$changed"
+
+      - name: Commit state
+        if: steps.probe.outputs.changed == 'true' || steps.probe.outputs.firstRun == 'true'
+        # Via env, never inlined into the script: a `${{ }}` expression is
+        # pasted in before bash sees the line, so a hostile value would run.
+        env:
+          BUILD: ${{ steps.probe.outputs.buildId }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/claude-build.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(canary): claude.ai build ${BUILD} [skip ci]"
+          git push
+
+      - name: Open an issue on change
+        if: steps.probe.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD: ${{ steps.probe.outputs.buildId }}
+          PREV: ${{ steps.probe.outputs.prevBuild }}
+          HASH: ${{ steps.probe.outputs.gitHash }}
+          COLOR: ${{ steps.probe.outputs.colorVersion }}
+          PREV_COLOR: ${{ steps.probe.outputs.prevColor }}
+          BUNDLE: ${{ steps.probe.outputs.bundle }}
+          PREV_BUNDLE: ${{ steps.probe.outputs.prevBundle }}
+        run: |
+          set -euo pipefail
+
+          gh label create "claude-build" \
+            --description "claude.ai shipped a new build" --color "0E8A16" 2>/dev/null || true
+
+          title="claude.ai shipped build ${BUILD} (was ${PREV})"
+
+          # One issue per build — a re-run must not duplicate it.
+          existing=$(gh issue list --search "$title in:title" --state all --json number --jq '.[0].number' || true)
+          if [ -n "$existing" ]; then
+            echo "Issue for ${BUILD} already exists (#${existing}) — nothing to do."
+            exit 0
+          fi
+
+          {
+            printf '%s\n' 'The canary saw a new claude.ai build. This is a **prompt to look**, not a'
+            printf '%s\n' 'confirmed break — most builds change nothing we depend on.'
+            printf '\n'
+
+            if [ "$COLOR" != "$PREV_COLOR" ]; then
+              printf '> **The palette generation moved: `%s` → `%s`.**\n' "$PREV_COLOR" "$COLOR"
+              printf '%s\n' '> claude.ai reworked its colors. Re-check every theme preset in both'
+              printf '%s\n' '> modes, not just the anchors.'
+              printf '\n'
+            fi
+
+            printf '%s\n' '| | previous | current |'
+            printf '%s\n' '|---|---|---|'
+            printf '| build id | `%s` | `%s` |\n' "$PREV" "$BUILD"
+            printf '| commit | | `%s` |\n' "$HASH"
+            printf '| palette | `%s` | `%s` |\n' "$PREV_COLOR" "$COLOR"
+            printf '| bundle | `%s` | `%s` |\n' "$PREV_BUNDLE" "$BUNDLE"
+            printf '\n'
+
+            printf '%s\n' '### Check'
+            printf '\n'
+            printf '%s\n' '- [ ] Open a real conversation with the extension loaded'
+            printf '%s\n' '- [ ] Selector health panel — any anchor on a fallback or broken?'
+            printf '%s\n' '- [ ] Code blocks, composer, sidebar and the header cluster still attach'
+            printf '%s\n' '- [ ] Themes render correctly in both light and dark'
+            printf '%s\n' '- [ ] If something broke: press **Copy report** in the panel and paste it here'
+            printf '\n'
+            printf '%s\n' 'Close this once checked — that is the record that the build was cleared.'
+            printf '\n'
+            printf '%s\n' '<sub>Opened automatically by `.github/workflows/claude-canary.yml`.</sub>'
+          } > /tmp/canary-body.md
+
+          gh issue create --title "$title" --label "claude-build" --body-file /tmp/canary-body.md
+
+      - name: Warn when the canary has gone blind
+        if: steps.probe.outputs.blind == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAILURES: ${{ steps.probe.outputs.failures }}
+        run: |
+          set -euo pipefail
+
+          title="Canary cannot read claude.ai's build id"
+          existing=$(gh issue list --search "$title in:title" --state open --json number --jq '.[0].number' || true)
+          if [ -n "$existing" ]; then
+            echo "Blind-canary issue already open (#${existing})."
+            exit 0
+          fi
+
+          {
+            printf '`claude-canary` has failed **%s consecutive probes** of\n' "$FAILURES"
+            printf '%s\n' '<https://claude.ai/new>.'
+            printf '\n'
+            printf '%s\n' 'A silent canary is indistinguishable from a quiet one, so this is worth a'
+            printf '%s\n' 'look. Likely causes, cheapest first:'
+            printf '\n'
+            printf '%s\n' '1. claude.ai now blocks GitHub-hosted runner IPs (Cloudflare) — the probe'
+            printf '%s\n' '   needs a different vantage point, or the workflow should be retired.'
+            printf '%s\n' '2. The shell stopped carrying `data-build-id` — update the extraction in'
+            printf '%s\n' '   `.github/workflows/claude-canary.yml` and in `src/shared/claude-build.ts`,'
+            printf '%s\n' '   which reads the same attributes on the page.'
+            printf '%s\n' '3. Transient outage — if the next few runs succeed, close this.'
+            printf '\n'
+            printf '%s\n' '<sub>Opened automatically by `.github/workflows/claude-canary.yml`.</sub>'
+          } > /tmp/blind-body.md
+
+          gh issue create --title "$title" --body-file /tmp/blind-body.md

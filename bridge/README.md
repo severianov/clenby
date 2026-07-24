@@ -1,6 +1,9 @@
 # clenby-bridge
 
-A loopback MCP bridge between a **claude.ai** conversation (via the [Clenby](https://github.com/) browser extension) and a **local Claude Code session**. It lets you push a conversation, answer, or selection from the web into a live Claude Code session, and lets Claude Code pull live conversation state back, all client-side, all on your machine.
+> Run it with `npx` — there is nothing to `npm install`. This is a CLI that
+> Claude Code spawns for you; the setup line below is the whole install.
+
+A loopback MCP bridge between a **claude.ai** conversation (via the [Clenby](https://github.com/severianov/clenby) browser extension) and a **local Claude Code session**. It lets you push a conversation, answer, or selection from the web into a live Claude Code session, and lets Claude Code pull live conversation state back, all client-side, all on your machine.
 
 It's a **stdio MCP server** that Claude Code spawns; it opens a **loopback-only** WebSocket the extension connects out to. Not a daemon: it lives and dies with the session.
 

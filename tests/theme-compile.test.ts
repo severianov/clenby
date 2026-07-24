@@ -16,6 +16,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { compileTheme } from "../src/theme/compile.ts";
 import { CLAUDE_PALETTE } from "../src/theme/claude-palette.ts";
+import { SELECTORS, selAll } from "../src/core/selectors.ts";
 import type { CompanionTokens, ThemeTokens } from "../src/theme/tokens.ts";
 
 const companion = (accent: string): CompanionTokens => ({
@@ -128,11 +129,38 @@ test("literal text repaints: body, user and composer text get chosen-mode fallba
 test("code surfaces follow the SCOPE (real mode); the theme owns everything else", () => {
   // Syntax ink is a real-mode literal we cannot restyle — each scope's code
   // surface must come from that scope's half/palette so ink stays readable.
+  // The selector is DERIVED, not retyped: this test used to hardcode
+  // `.font-claude-response pre > div`, so when claude.ai inverted the shape to
+  // `div.overflow-x-auto > pre.code-block__code` the rule stopped matching
+  // anything on the real page while the test stayed green. Deriving it means a
+  // future selector change can never pass here unnoticed.
   const css = compileTheme(themed, "light");
-  const darkScopeCode = `html[data-mode="dark"] .font-claude-response pre > div{background:hsl(${CLAUDE_PALETTE.dark.bg[2]})!important;}`;
-  const lightScopeCode = `html[data-mode="light"] .font-claude-response pre > div{background:hsl(${CLAUDE_PALETTE.light.bg[2]})!important;}`;
+  const code = selAll("codeBlockSurface");
+  const darkScopeCode = `html[data-mode="dark"] ${code}{background:hsl(${CLAUDE_PALETTE.dark.bg[2]})!important;}`;
+  const lightScopeCode = `html[data-mode="light"] ${code}{background:hsl(${CLAUDE_PALETTE.light.bg[2]})!important;}`;
   assert.ok(css.includes(darkScopeCode), "dark scope keeps a dark code surface");
   assert.ok(css.includes(lightScopeCode), "light scope keeps a light code surface");
+});
+
+test("the code surface emits every candidate, so a DOM change degrades not disappears", () => {
+  // An unpainted code block is the worst failure mode this theme has: the ink
+  // is claude's own and real-mode bound, so losing the surface puts near-white
+  // code on a light page. CSS cannot try candidates in order the way a runtime
+  // query does, so the compiler emits them as one :is() union.
+  const entry = SELECTORS.codeBlockSurface;
+  const code = selAll("codeBlockSurface");
+  assert.ok(code.startsWith(":is("), "code surface must compile to a :is() union");
+  assert.ok(code.includes(entry.primary), "the verified primary is present");
+  for (const fb of entry.fallbacks ?? []) {
+    assert.ok(code.includes(fb), `fallback "${fb}" is present in the emitted rule`);
+  }
+  // The scope prefix must stay outside the union — a bare comma list would
+  // leak the later arms out of html[data-mode="…"] and theme the whole page.
+  const css = compileTheme(themed, "light");
+  assert.ok(
+    !css.includes(`html[data-mode="light"] ${entry.primary}, `),
+    "candidates must not be emitted as an unscoped comma list",
+  );
 });
 
 test("full sidebar takeover: chosen-mode surface + label repaint under BOTH scopes", () => {

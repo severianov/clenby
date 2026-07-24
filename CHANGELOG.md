@@ -7,8 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Keyboard shortcuts are now written down.** The gear menu's Actions zone has
+  a Keyboard shortcuts row that prints the command-palette chord on its face —
+  visible the moment you open the menu, not hidden in a tooltip — and opens a
+  full, filterable reference inside the command palette, grouped Anywhere / In
+  the composer / In a panel. Fifteen bindings, including several that were
+  never documented anywhere.
+- **A Palette launcher tile in the gear menu**, beside Find. The command
+  palette previously had no gear entry at all, and its only label anywhere was
+  a tooltip on an unlabelled ⌘ glyph.
+- **The command palette shows a key legend under its list**, leading with the
+  chord that opens it — so a user who clicked their way in leaves knowing the
+  keystroke.
+
+- **Breakage reporting without telemetry** — claude.ai ships UI changes without
+  notice, and until now the only way to hear about a break was someone
+  describing it in prose. Three additions, none of which send anything:
+  - The selector-health panel gained **Copy report** and **Open a GitHub
+    issue ↗**. Both produce the same markdown: extension version, browser,
+    claude.ai's own build identity, and every degraded anchor with its
+    counters, the fallback variant it landed on and the features it takes
+    down. The issue button opens a prefilled form the user reviews and
+    submits themselves — anchor names, health counters and structural element
+    paths only, never message text.
+  - Rows carrying a local override gained **Share**, which copies that
+    override as importable JSON stamped with the build it was written
+    against. A repair that used to die on one machine can now ship as the
+    default for everyone.
+  - Clenby now reads claude.ai's `data-build-id`, `data-git-hash`,
+    `data-color-version` and build timestamp. Nothing depends on them — they
+    exist so ten separate reports collapse into one line: everyone on this
+    build lost the same anchor.
+- **A canary that watches claude.ai** (`.github/workflows/claude-canary.yml`) —
+  hourly, it reads the build identity and bundle hash from the app shell and
+  opens an issue when either moves, so a UI change is noticed before the first
+  user report. It calls out palette-generation changes specially, since those
+  are the ones that move themes rather than anchors.
+
 ### Changed
 
+- **Every chord in the interface is now spelled from one table**
+  (`src/shared/keymap.ts`) and rendered for your platform — ⇧⌘K on macOS,
+  Ctrl+Shift+K elsewhere. Ctrl and ⌘ both still work everywhere; the platform
+  only decides what is printed. This replaces three different spellings of the
+  same bindings that had drifted apart across the gear menu, the find bar and
+  the header.
 - **Sends to Claude Code report back in the status bar** — the row that used to
   just show the chat id now narrates each send in that space: `⇄ sending to
   <node>…`, then `✓ received by <node> · pick up: /mcp__clenby__handoff` (held
@@ -63,9 +108,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Toolbar icon**: clicking the extension icon no longer opens the old
   popup settings page (removed). On a claude.ai tab it opens the in-page
   gear settings; elsewhere it focuses (or opens) claude.ai.
+- Build framework upgraded from WXT 0.19 to 0.20.27. No user-facing change;
+  the generated Chrome and Firefox manifests were verified byte-identical
+  before and after. The `webextension-polyfill` that 0.19 bundled by default
+  (0.20 drops it) is re-added via the `@wxt-dev/webextension-polyfill` module
+  so `runtime.onMessage` keeps its promise-based response semantics.
+
+### Removed
+
+- The `/handoff` project slash command. `/mcp__clenby__handoff`, provided by the
+  `clenby-bridge` MCP server, is the single supported way to pick up a handoff.
+  The command file shipped only to people who cloned the repository, never to
+  users, and duplicated the MCP prompt's text — two copies of one instruction,
+  free to drift.
 
 ### Fixed
 
+- **Code blocks are painted again — the big one for Light themes.** claude.ai
+  inverted its code-block markup: the scroll container used to sit *inside* the
+  `<pre>`, and now wraps it (`div.overflow-x-auto > pre.code-block__code`). The
+  shipped selector still described the old shape, so it matched nothing and the
+  theme never painted a code surface at all. Because claude's syntax colours
+  are inline styles bound to the page's real appearance — near-white ink when
+  claude.ai renders dark — a Light theme ended up showing near-white code on a
+  light page. The anchor now targets the current markup, and keeps the old
+  shape plus a bare `pre` as fallbacks.
+- **Theme rules now emit every selector candidate, not just the primary.** A
+  runtime lookup walks its fallbacks and reports what matched; generated CSS
+  had no such path, so a theme rule could silently stop applying with nothing
+  to notice it. Candidates are compiled into one `:is()` union, so a markup
+  change degrades instead of disappearing.
+- **Outline: the Questions tab numbers match the Answers tab.** Question rows
+  rendered their number in the faint grey used for secondary text while answers
+  used the body tone at weight 600, so two tabs that are deliberately numbered
+  as one symmetric pair didn't look like a pair.
 - **"Send to Claude Code" feels instant, and the first send after an idle spell
   is quick** — two changes to the send path. The background used to sleep a flat
   ~2.7 s whenever its socket map looked empty (the MV3 worker having just woken

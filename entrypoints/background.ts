@@ -20,7 +20,7 @@
  * error or unhandled promise rejection on the chrome://extensions card.
  */
 
-import { defineBackground } from "wxt/sandbox";
+import { defineBackground } from "wxt/utils/define-background";
 import { browser } from "wxt/browser";
 import { MetaKey } from "@/core/storage-keys";
 import {

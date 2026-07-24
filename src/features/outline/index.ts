@@ -472,7 +472,10 @@ export const outline: FeatureModule = {
 
     const renderQuestions = (index: ConversationIndex | null): void => {
       const humans = index?.messages.filter((m) => m.sender === "human") ?? [];
-      humans.forEach((m, i) => addNumbered(i + 1, clip(m.text, 58), () => jumpMsg(m)));
+      // bold: true — the numbers must read identically to the Answers tab
+      // (`.cc-num`, not the faint grey); the two tabs are numbered as one
+      // symmetric pair.
+      humans.forEach((m, i) => addNumbered(i + 1, clip(m.text, 58), () => jumpMsg(m), { bold: true }));
     };
 
     const renderAnswers = (index: ConversationIndex | null): void => {

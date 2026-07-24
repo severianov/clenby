@@ -1,6 +1,8 @@
-# Machine-local Claude Code settings (permissions etc.) — never shared.
-# .claude/commands/ IS tracked: project slash commands ship with the repo.
-.claude/settings.local.json
+# Machine-local Claude Code config (permissions, project slash commands).
+# Nothing here ships: the bridge's own MCP prompt (/mcp__clenby__handoff) is
+# the single supported entry point, and a repo-only duplicate would reach
+# contributors but never users, then drift from the prompt it copies.
+.claude/
 
 # Dependencies & build output
 node_modules/
