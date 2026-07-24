@@ -321,7 +321,7 @@ export const answerToolbar: FeatureModule = {
         targetLine.textContent = "";
         return;
       }
-      const who = disambiguated(b) ? `${b.project} ·${b.shortId}` : b.project;
+      const who = disambiguated(b) ? `${b.project} · ${b.petname ?? b.shortId}` : b.project;
       targetLine.textContent = `→ ${who} (${b.path})`;
     };
 

@@ -79,6 +79,9 @@ let active: MountState | null = null;
  *  an open popover survives a conversation switch with fresh data. */
 let lastContainer: HTMLElement | null = null;
 
+/** The send-notes button awaiting its bridge:send-result flash. */
+let notesSendPending: HTMLElement | null = null;
+
 export const notes: FeatureModule = {
   id: OWNER,
   tier: 2,
@@ -106,6 +109,24 @@ export const notes: FeatureModule = {
     // The header cluster owns the 📝 button + popover shell; it announces
     // every open on the bus with the popover body (idempotent re-mount).
     ctx.on("ui:notes-open", ({ container }) => mountNotesPanel(container));
+
+    // Flash the send-notes button on the bridge's verdict (✓ delivered / red
+    // when no session or the send failed).
+    ctx.on("bridge:send-result", ({ ok }) => {
+      const b = notesSendPending;
+      if (!b || !b.isConnected) {
+        notesSendPending = null;
+        return;
+      }
+      notesSendPending = null;
+      b.innerHTML = ok ? NOTES_SVG_OK : NOTES_SVG_SEND;
+      b.classList.add(ok ? "cc-ok" : "cc-danger-text");
+      ctx.setTimeout(() => {
+        if (!b.isConnected) return;
+        b.innerHTML = NOTES_SVG_SEND;
+        b.classList.remove("cc-ok", "cc-danger-text");
+      }, 1600);
+    });
 
     // The answer-toolbar's "add to note" lands here (bus event — features
     // never import each other): the snippet becomes a NEW note for this
@@ -334,6 +355,35 @@ function renderInto(
   renderEditor(state, container, note, focus);
 }
 
+/** Same paper-plane as the answer-toolbar / outline "Send to Claude Code". */
+const NOTES_SVG_SEND =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>';
+const NOTES_SVG_OK =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+/** The send-all-notes icon button (list + editor headers share it). */
+function sendNotesBtn(): HTMLElement {
+  const b = ownedEl("button", {
+    owner: OWNER,
+    className: "cc-iconbtn cc-note-send",
+    attrs: { type: "button", title: "Send this chat's notes to Claude Code" },
+  });
+  b.innerHTML = NOTES_SVG_SEND;
+  return b;
+}
+
+/** All notes of this chat as one export markdown (handoff body). */
+function notesMarkdown(state: MountState): string {
+  const title = state.ctx.conversation.current()?.name ?? "(untitled)";
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+  const n = state.notes.length;
+  let md = `# Notes — ${title}\n\n_${n} note${n === 1 ? "" : "s"} · exported ${stamp}_\n\n`;
+  state.notes.forEach((note, i) => {
+    md += `## Note ${i + 1}\n\n${note.text.trim() || "(empty note)"}\n\n`;
+  });
+  return md.trimEnd() + "\n";
+}
+
 /** The panel's ONE header (list view + empty states) — the header-cluster
  *  popover shell deliberately renders none (doubled-header fix). */
 function listHead(): HTMLElement {
@@ -342,6 +392,7 @@ function listHead(): HTMLElement {
   head.appendChild(
     ownedEl("span", { owner: OWNER, className: "cc-notes-scope", text: "this chat · markdown" }),
   );
+  head.appendChild(sendNotesBtn());
   return head;
 }
 
@@ -461,6 +512,7 @@ function renderEditor(
       attrs: { type: "button", "aria-label": "Add a todo line" },
     }),
   );
+  head.appendChild(sendNotesBtn());
   container.appendChild(head);
 
   const ed = ownedEl("div", { owner: OWNER, className: "cc-note-ed" });
@@ -637,6 +689,18 @@ function wire(state: MountState, container: HTMLElement): void {
 function onClick(state: MountState, container: HTMLElement, ev: MouseEvent): void {
   const t = ev.target instanceof HTMLElement ? ev.target : null;
   if (!t) return;
+
+  const send = t.closest<HTMLElement>(".cc-note-send");
+  if (send) {
+    flushSave(state); // include the note being edited right now
+    notesSendPending = send;
+    state.ctx.bus.emit("bridge:send", {
+      handle: "context",
+      scope: "notes",
+      body: notesMarkdown(state),
+    });
+    return;
+  }
 
   const del = t.closest<HTMLElement>(".cc-note-del");
   if (del) {

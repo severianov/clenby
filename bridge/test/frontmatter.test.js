@@ -32,3 +32,5 @@ test('push meta source_title wins over frontmatter re-parsing', () => {
   });
   assert.equal(rec.source_title, 'Meta Title');
 });
+
+// Petname sanity lives here to avoid a new test file for two asserts.

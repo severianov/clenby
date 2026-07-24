@@ -11,14 +11,14 @@
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
-    "postbuild": "rm -rf chrome-extension-build && cp -R .output/chrome-mv3 chrome-extension-build",
+    "postbuild": "mkdir -p chrome-extension-build && find chrome-extension-build -mindepth 1 -delete && cp -R .output/chrome-mv3/. chrome-extension-build/",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "prepare": "wxt prepare",
     "compile": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
-    "test": "node --test --import ./tests/_alias.mjs"
+    "test": "node --test --import ./tests/_alias.mjs \"tests/*.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

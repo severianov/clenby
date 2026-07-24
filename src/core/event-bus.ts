@@ -41,6 +41,9 @@ export interface CompanionEvents {
   /** Toggle the command palette (header-cluster button; the palette also
    *  listens for Ctrl/Cmd+Shift+K itself). */
   "ui:palette-toggle": Record<string, never>;
+  /** Open the gear menu, scroll to the Claude Code card, expand setup, flash
+   *  it — emitted by the composer chip when the bridge isn't paired yet. */
+  "ui:bridge-setup": Record<string, never>;
   /** Toggle the Conversation Atlas overlay. DORMANT: the atlas feature is
    *  deactivated (kept in src/features/atlas, unregistered) — nothing emits
    *  or subscribes until it is re-added to the registry and its gear/palette
@@ -131,6 +134,9 @@ export interface CompanionEvents {
     scope: HandoffScope;
     uuid?: string;
     selectionText?: string;
+    /** Pre-built markdown body for the collection scopes (pins / highlights /
+     *  notes) — the sender's own export format, enveloped by the bridge. */
+    body?: string;
   };
   /** Result of the most recent "bridge:send" (the claude-code-bridge feature is
    *  the producer): delivered after the bridge acks, or a calm failure reason.

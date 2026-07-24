@@ -42,10 +42,14 @@ import type { ThemeModeSetting, ThemeTokens } from "@/theme/tokens";
 import type { BridgePairResult, BridgeStatus } from "@/shared/bridge-protocol";
 
 /** The one-line setup command the user runs in their terminal (spec §1/§10). */
-const BRIDGE_SETUP_CMD = "claude mcp add clenby -- npx clenby-bridge@latest";
+// --scope user: without it Claude Code registers the bridge for the CURRENT
+// FOLDER only, and sessions in any other project silently have no bridge.
+const BRIDGE_SETUP_CMD = "claude mcp add --scope user clenby -- npx clenby-bridge@latest";
 const BRIDGE_CODE_CMD = "npx clenby-bridge@latest code";
 const BRIDGE_AUDIT_CMD = "npx clenby-bridge@latest audit";
 const BRIDGE_ROTATE_CMD = "npx clenby-bridge@latest --rotate-token";
+const BRIDGE_REMOVE_TOKEN_CMD = "npx clenby-bridge@latest remove-token";
+const BRIDGE_REMOVE_MCP_CMD = "claude mcp remove clenby";
 
 const OWNER = "header-cluster";
 
@@ -473,223 +477,294 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   // ZONE — CLAUDE CODE BRIDGE (pairing + live status, spec §3/§5)
   // =====================================================================
   const bridge = zone("Claude Code");
+  bridge.id = "cc-gear-ccb"; // scroll/flash target for the composer-chip shortcut
   let bridgeStatus: BridgeStatus = { paired: false, hasPermission: false, sessions: [] };
   let expanded = false;
 
-  // Status header: colored dot + one line + (when paired) an inline Rescan.
-  const statusHead = ownedEl("div", { owner: OWNER, className: "cc-ccb-head" });
-  const statusDot = ownedEl("span", {
-    owner: OWNER,
-    className: "cc-ccb-head-dot",
-    attrs: { "aria-hidden": "true" },
-  });
-  const statusRow = ownedEl("span", { owner: OWNER, className: "cc-ccb-status" });
-  statusHead.append(statusDot, statusRow);
-  bridge.append(statusHead);
+  // ---- Terminal skin ("clenby-bridge") -----------------------------------
+  // The whole zone renders as a tiny terminal window. Its frame + palette are
+  // deliberately FIXED-DARK on every theme (a terminal is dark), so the colors
+  // are literal in companion.css, not var(--cc-*) tokens. All state logic below
+  // is preserved from the previous card — this is a reskin, not a rewrite.
+  const tSpan = (cls: string, text: string): HTMLSpanElement =>
+    ownedEl("span", { owner: OWNER, className: cls, text });
 
-  // Roster (connected sessions).
-  const roster = ownedEl("div", { owner: OWNER, className: "cc-ccb-roster" });
-  bridge.append(roster);
-
-  /** A copy-on-click command chip (the zone-level listener animates it). */
-  const cmdChip = (cmd: string): HTMLElement =>
-    ownedEl("code", {
+  // Non-interactive prompt line: "$ <rest>".
+  const promptLine = (rest: string, restCls = "cc-cct-tx"): HTMLDivElement => {
+    const line = ownedEl("div", { owner: OWNER, className: "cc-cct-line" });
+    line.append(tSpan("cc-cct-prompt", "$"), tSpan(restCls, ` ${rest}`));
+    return line;
+  };
+  // Status line: colored glyph + text (e.g. "○ not linked").
+  const glyphLine = (glyph: string, glyphCls: string, rest: string): HTMLDivElement => {
+    const line = ownedEl("div", { owner: OWNER, className: "cc-cct-line" });
+    line.append(tSpan(`cc-cct-gl ${glyphCls}`, glyph), tSpan("cc-cct-tx", ` ${rest}`));
+    return line;
+  };
+  // "# comment" line — dim by default; danger for the uninstall title.
+  const commentLine = (text: string, colorCls = "cc-cct-dim"): HTMLDivElement =>
+    ownedEl("div", { owner: OWNER, className: `cc-cct-line ${colorCls}`, text });
+  // Copyable command line: "$ <cmd> ⧉". data-cc-cmd is the single source for the
+  // copied text, so what's shown and what's copied can never drift.
+  const cmdLine = (cmd: string): HTMLButtonElement => {
+    const b = ownedEl("button", {
       owner: OWNER,
-      className: "cc-ccb-cmd",
-      text: cmd,
-      attrs: { title: "Click to copy" },
+      className: "cc-cct-line cc-cct-cmd",
+      attrs: { type: "button", title: `Copy: ${cmd}`, "aria-label": `Copy command: ${cmd}` },
     });
-
-  // The explainer panel — shown BEFORE the browser's own (unalterable)
-  // permission prompt (spec §5). Copy is verbatim.
-  const pairPanel = ownedEl("div", { owner: OWNER, className: "cc-ccb-pair" });
-  pairPanel.append(
-    ownedEl("div", { owner: OWNER, className: "cc-ccb-pair-title", text: "Connect to Claude Code" }),
-    ownedEl("div", {
-      owner: OWNER,
-      className: "cc-ccb-pair-body",
-      text:
-        "A private link on your own computer — nothing is ever sent online. Your browser will " +
-        "ask once to allow 127.0.0.1: that's your machine's local address, not a website.",
-    }),
-  );
-
-  /** One numbered step: a badge + label row, then an indented body. */
-  const step = (n: string, label: string): HTMLElement => {
-    const head = ownedEl("div", { owner: OWNER, className: "cc-ccb-step" });
-    head.append(
-      ownedEl("span", { owner: OWNER, className: "cc-ccb-step-n", text: n }),
-      ownedEl("span", { owner: OWNER, className: "cc-ccb-step-l", text: label }),
+    b.dataset["ccCmd"] = cmd;
+    b.append(
+      tSpan("cc-cct-prompt", "$"),
+      tSpan("cc-cct-cmdtx", ` ${cmd}`),
+      ownedEl("span", {
+        owner: OWNER,
+        className: "cc-cct-copy",
+        text: "⧉",
+        attrs: { "aria-hidden": "true" },
+      }),
     );
-    const body = ownedEl("div", { owner: OWNER, className: "cc-ccb-step-b" });
-    pairPanel.append(head, body);
-    return body;
+    return b;
+  };
+  // Clickable action line styled as a terminal command (no copy glyph).
+  const promptBtn = (title: string): HTMLButtonElement => {
+    const b = ownedEl("button", {
+      owner: OWNER,
+      className: "cc-cct-line cc-cct-btn",
+      attrs: { type: "button", title, "aria-label": title },
+    });
+    b.append(tSpan("cc-cct-prompt", "$"));
+    return b;
   };
 
-  step("1", "Register the bridge — one line, one time").append(cmdChip(BRIDGE_SETUP_CMD));
-  step("2", "Print your pairing code").append(cmdChip(BRIDGE_CODE_CMD));
-  const step3 = step("3", "Paste the code and pair");
+  // Frame: title bar (three dots + mono label) over a dark body.
+  const term = ownedEl("div", { owner: OWNER, className: "cc-cct" });
+  const bar = ownedEl("div", { owner: OWNER, className: "cc-cct-bar" });
+  const dots = ownedEl("div", {
+    owner: OWNER,
+    className: "cc-cct-dots",
+    attrs: { "aria-hidden": "true" },
+  });
+  dots.append(
+    ownedEl("span", { owner: OWNER, className: "cc-cct-tdot" }),
+    ownedEl("span", { owner: OWNER, className: "cc-cct-tdot" }),
+    ownedEl("span", { owner: OWNER, className: "cc-cct-tdot" }),
+  );
+  const barLabel = ownedEl("span", {
+    owner: OWNER,
+    className: "cc-cct-tlabel",
+    text: "clenby-bridge",
+  });
+  bar.append(dots, barLabel);
+  const body = ownedEl("div", { owner: OWNER, className: "cc-cct-body" });
+  term.append(bar, body);
+  bridge.append(term);
+
+  // ---- NOT-LINKED group: status + setup/advanced entries -----------------
+  const grpNotLinked = ownedEl("div", { owner: OWNER, className: "cc-cct-grp" });
+  const setupLine = promptBtn("Set up the Claude Code bridge");
+  setupLine.append(tSpan("cc-cct-accent", " clenby setup"));
+  const advancedLine = promptBtn("Show install, uninstall and audit commands");
+  advancedLine.append(
+    tSpan("cc-cct-tx", " clenby advanced"),
+    tSpan("cc-cct-dim", " — install / uninstall / audit"),
+  );
+  advancedLine.setAttribute("aria-expanded", "false");
+  // Advanced block (reachable ONLY while not linked — owner rule).
+  const advancedBlock = ownedEl("div", { owner: OWNER, className: "cc-cct-adv cc-hidden" });
+  advancedBlock.append(
+    commentLine("# check what the bridge runs — click to copy"),
+    cmdLine(BRIDGE_AUDIT_CMD),
+    commentLine("# rotate the pairing token"),
+    cmdLine(BRIDGE_ROTATE_CMD),
+  );
+  const removeBox = ownedEl("div", { owner: OWNER, className: "cc-cct-remove" });
+  removeBox.append(
+    commentLine("# uninstall from your terminal", "cc-cct-danger"),
+    cmdLine(BRIDGE_REMOVE_TOKEN_CMD),
+    cmdLine(BRIDGE_REMOVE_MCP_CMD),
+    commentLine("# after these, no trace remains"),
+  );
+  advancedBlock.append(removeBox);
+  grpNotLinked.append(
+    promptLine("clenby status"),
+    glyphLine("○", "cc-cct-gold", "not linked"),
+    ownedEl("div", { owner: OWNER, className: "cc-cct-spacer", attrs: { "aria-hidden": "true" } }),
+    setupLine,
+    advancedLine,
+    advancedBlock,
+  );
+
+  // ---- SETUP group: register · code · paste ------------------------------
+  const grpSetup = ownedEl("div", { owner: OWNER, className: "cc-cct-grp cc-hidden" });
   const codeInput = ownedEl("input", {
     owner: OWNER,
-    className: "cc-input cc-ccb-code",
-    attrs: { type: "text", placeholder: "clenby_…", spellcheck: "false" },
-  });
-  const pairMsg = ownedEl("div", { owner: OWNER, className: "cc-ccb-msg" });
-  const pairBtns = ownedEl("div", { owner: OWNER, className: "cc-send-actions" });
-  const notNowBtn = ownedEl("button", {
-    owner: OWNER,
-    className: "cc-btn",
-    text: "Not now",
-    attrs: { type: "button" },
+    className: "cc-cct-input",
+    attrs: {
+      type: "text",
+      placeholder: "clenby_…",
+      spellcheck: "false",
+      "aria-label": "Pairing code",
+    },
   });
   const pairBtn = ownedEl("button", {
     owner: OWNER,
-    className: "cc-btn cc-send-go",
-    text: "Pair",
+    className: "cc-cct-pair",
+    text: "pair",
     attrs: { type: "button" },
   });
-  pairBtns.append(notNowBtn, pairBtn);
-  step3.append(codeInput, pairMsg, pairBtns);
-
-  // Trust footnote — checkable, not asked for.
-  const trustNote = ownedEl("div", { owner: OWNER, className: "cc-ccb-note" });
-  trustNote.append(
-    ownedEl("span", {
-      owner: OWNER,
-      text: "Want proof before trusting it? This fingerprints every file the bridge runs: ",
-    }),
-    cmdChip(BRIDGE_AUDIT_CMD),
+  const pairRow = ownedEl("div", { owner: OWNER, className: "cc-cct-pairrow" });
+  pairRow.append(codeInput, pairBtn);
+  const pairMsg = ownedEl("div", { owner: OWNER, className: "cc-cct-msg" });
+  const verifyBtn = ownedEl("button", {
+    owner: OWNER,
+    className: "cc-cct-link",
+    text: "verify",
+    attrs: { type: "button", "aria-expanded": "false" },
+  });
+  const cancelBtn = ownedEl("button", {
+    owner: OWNER,
+    className: "cc-cct-link",
+    text: "cancel",
+    attrs: { type: "button" },
+  });
+  const setupFoot = ownedEl("div", { owner: OWNER, className: "cc-cct-foot" });
+  setupFoot.append(
+    tSpan("cc-cct-dim", "loopback only · nothing online · "),
+    verifyBtn,
+    tSpan("cc-cct-dim", " · "),
+    cancelBtn,
   );
-  pairPanel.append(trustNote);
-  bridge.append(pairPanel);
+  const verifyRow = ownedEl("div", { owner: OWNER, className: "cc-cct-verify cc-hidden" });
+  verifyRow.append(cmdLine(BRIDGE_AUDIT_CMD));
+  grpSetup.append(
+    commentLine("# 1 · register (one time) — click to copy"),
+    cmdLine(BRIDGE_SETUP_CMD),
+    commentLine("# 2 · print your pairing code"),
+    cmdLine(BRIDGE_CODE_CMD),
+    commentLine("# 3 · paste it"),
+    pairRow,
+    pairMsg,
+    setupFoot,
+    verifyRow,
+  );
 
-  // Every command chip in the zone copies itself on click — terminal-shy
-  // users shouldn't have to hand-select monospace text.
+  // ---- CONNECTED group: status(⟳) + roster + unpair ----------------------
+  const grpConnected = ownedEl("div", { owner: OWNER, className: "cc-cct-grp cc-hidden" });
+  const connStatusLine = ownedEl("div", { owner: OWNER, className: "cc-cct-line" });
+  const rescanBtn = ownedEl("button", {
+    owner: OWNER,
+    className: "cc-cct-rescan",
+    text: "(⟳)",
+    attrs: {
+      type: "button",
+      title: "Rescan for running sessions",
+      "aria-label": "Rescan for running Claude Code sessions",
+    },
+  });
+  connStatusLine.append(
+    tSpan("cc-cct-prompt", "$"),
+    tSpan("cc-cct-tx", " clenby status "),
+    rescanBtn,
+  );
+  const connResultLine = ownedEl("div", { owner: OWNER, className: "cc-cct-line" });
+  const connResultGlyph = tSpan("cc-cct-gl", "");
+  const connResultText = tSpan("cc-cct-tx", "");
+  connResultLine.append(connResultGlyph, connResultText);
+  const rosterWrap = ownedEl("div", { owner: OWNER, className: "cc-cct-roster" });
+  const unpairLine = promptBtn("Stop the bridge connecting to this browser");
+  unpairLine.append(tSpan("cc-cct-danger", " clenby unpair"));
+  grpConnected.append(connStatusLine, connResultLine, rosterWrap, unpairLine);
+
+  body.append(grpNotLinked, grpSetup, grpConnected);
+
+  // ---- state machine (behavior preserved from the card design) -----------
+  let advOpen = false;
+  const setAdvanced = (open: boolean): void => {
+    advOpen = open;
+    advancedBlock.classList.toggle("cc-hidden", !open);
+    advancedLine.setAttribute("aria-expanded", String(open));
+  };
+  ctx.listen(advancedLine, "click", () => setAdvanced(!advOpen));
+  ctx.listen(verifyBtn, "click", () => {
+    const show = verifyRow.classList.contains("cc-hidden");
+    verifyRow.classList.toggle("cc-hidden", !show);
+    verifyBtn.setAttribute("aria-expanded", String(show));
+  });
+
+  // Every "$ … ⧉" line copies its command on click — terminal-shy users
+  // shouldn't have to hand-select monospace text. Delegated on the zone.
   ctx.listen(bridge, "click", (ev: MouseEvent) => {
-    const el = ev.target instanceof Element ? ev.target.closest<HTMLElement>("code.cc-ccb-cmd") : null;
-    if (!el || el.dataset["ccFlash"]) return;
-    const cmd = el.textContent ?? "";
+    const chip = ev.target instanceof Element ? ev.target.closest<HTMLElement>(".cc-cct-cmd") : null;
+    if (!chip || chip.dataset["ccFlash"]) return;
+    const cmd = chip.dataset["ccCmd"] ?? "";
+    if (!cmd) return;
     void navigator.clipboard
       .writeText(cmd)
       .then(() => {
         if (ctx.signal.aborted) return;
-        el.dataset["ccFlash"] = "1";
-        el.textContent = "copied ✓";
-        el.classList.add("cc-ok-text");
+        const glyph = chip.querySelector<HTMLElement>(".cc-cct-copy");
+        if (!glyph) return;
+        chip.dataset["ccFlash"] = "1";
+        glyph.textContent = "✓";
+        chip.classList.add("cc-cct-copied");
         ctx.setTimeout(() => {
-          el.textContent = cmd;
-          el.classList.remove("cc-ok-text");
-          delete el.dataset["ccFlash"];
+          glyph.textContent = "⧉";
+          chip.classList.remove("cc-cct-copied");
+          delete chip.dataset["ccFlash"];
         }, 900);
       })
       .catch(() => undefined);
   });
 
-  // Collapsed entry (not paired, not expanded) + paired-state utilities.
-  const connectBtn = ownedEl("button", {
-    owner: OWNER,
-    className: "cc-btn cc-ccb-connect",
-    text: "Connect Claude Code…",
-    attrs: { type: "button" },
-  });
-  const rescanBtn = ownedEl("button", {
-    owner: OWNER,
-    className: "cc-ccb-rescan",
-    text: "⟳ Rescan",
-    attrs: { type: "button", title: "Look for running Claude Code sessions right now" },
-  });
-  statusHead.append(rescanBtn);
-
-  // "Terminal commands" drawer — every CLI a paired user might ever need,
-  // one click away, each line copyable. This is where rotate-token lives.
-  const drawerBtn = ownedEl("button", {
-    owner: OWNER,
-    className: "cc-ccb-drawer-t",
-    text: "Terminal commands ▾",
-    attrs: { type: "button", "aria-expanded": "false" },
-  });
-  const drawer = ownedEl("div", { owner: OWNER, className: "cc-ccb-drawer cc-hidden" });
-  const cmdRow = (label: string, cmd: string): void => {
-    const row = ownedEl("div", { owner: OWNER, className: "cc-ccb-cmdrow" });
-    row.append(
-      ownedEl("span", { owner: OWNER, className: "cc-ccb-cmdrow-l", text: label }),
-      cmdChip(cmd),
-    );
-    drawer.append(row);
-  };
-  cmdRow("Pairing code — prints it any time", BRIDGE_CODE_CMD);
-  cmdRow("Audit — fingerprint every file it runs", BRIDGE_AUDIT_CMD);
-  cmdRow("Rotate token — new code, re-pair once", BRIDGE_ROTATE_CMD);
-  drawer.append(
-    ownedEl("div", {
-      owner: OWNER,
-      className: "cc-ccb-note",
-      text:
-        "To stop a session's bridge: end that Claude Code session, or run /mcp there and " +
-        "disable clenby. Nothing keeps running on its own.",
-    }),
-  );
-  let drawerOpen = false;
-  const setDrawer = (open: boolean): void => {
-    drawerOpen = open;
-    drawerBtn.textContent = open ? "Terminal commands ▴" : "Terminal commands ▾";
-    drawerBtn.setAttribute("aria-expanded", String(open));
-    drawer.classList.toggle("cc-hidden", !open);
-  };
-  ctx.listen(drawerBtn, "click", () => setDrawer(!drawerOpen));
-
-  const forgetBtn = ownedEl("button", {
-    owner: OWNER,
-    className: "cc-btn cc-ccb-forget",
-    text: "Forget",
-    attrs: { type: "button", title: "Clear the stored pairing and release the 127.0.0.1 grant" },
-  });
-  bridge.append(connectBtn, drawerBtn, drawer, forgetBtn);
-
   const renderBridge = (): void => {
     const { paired, sessions } = bridgeStatus;
-    // Status line.
-    statusDot.classList.remove("cc-ccb-dot-on", "cc-ccb-dot-idle", "cc-ccb-dot-off");
-    if (!paired) {
-      statusRow.textContent = "Not connected — pair once to send handoffs.";
-      statusRow.classList.remove("cc-ok-text");
-      statusDot.classList.add("cc-ccb-dot-off");
-    } else if (sessions.length > 0) {
-      statusRow.textContent = `Connected — ${sessions.length} session${sessions.length === 1 ? "" : "s"}`;
-      statusRow.classList.add("cc-ok-text");
-      statusDot.classList.add("cc-ccb-dot-on");
-    } else {
-      statusRow.textContent = "Paired — start Claude Code to connect.";
-      statusRow.classList.remove("cc-ok-text");
-      statusDot.classList.add("cc-ccb-dot-idle");
+    const showSetup = !paired && expanded;
+    const showConnected = paired;
+    const showNotLinked = !paired && !expanded;
+
+    barLabel.textContent = showSetup ? "clenby-bridge — setup" : "clenby-bridge";
+    grpNotLinked.classList.toggle("cc-hidden", !showNotLinked);
+    grpSetup.classList.toggle("cc-hidden", !showSetup);
+    grpConnected.classList.toggle("cc-hidden", !showConnected);
+
+    // Advanced is only reachable in the not-linked state.
+    if (!showNotLinked) setAdvanced(false);
+
+    if (showConnected) {
+      connResultText.className = "cc-cct-tx";
+      if (sessions.length > 0) {
+        connResultGlyph.className = "cc-cct-gl cc-cct-green";
+        connResultGlyph.textContent = "●";
+        connResultText.textContent = ` connected — ${sessions.length} session${sessions.length === 1 ? "" : "s"}`;
+      } else {
+        connResultGlyph.className = "cc-cct-gl cc-cct-gold";
+        connResultGlyph.textContent = "○";
+        connResultText.textContent = " linked — no session";
+      }
+      rosterWrap.replaceChildren();
+      for (const s of sessions) {
+        const time = s.startedAt ? new Date(s.startedAt) : null;
+        const hhmm =
+          time && !Number.isNaN(time.getTime())
+            ? `${String(time.getHours()).padStart(2, "0")}:${String(time.getMinutes()).padStart(2, "0")}`
+            : "";
+        const row = ownedEl("div", { owner: OWNER, className: "cc-cct-line cc-cct-rrow" });
+        row.append(
+          tSpan("cc-cct-gl cc-cct-green", "◍"),
+          tSpan(
+            "cc-cct-rname",
+            s.petname ? `${s.project} · ${s.petname}` : `${s.project} · ${s.shortId}`,
+          ),
+          tSpan("cc-cct-rtime", hhmm),
+        );
+        rosterWrap.append(row);
+      }
     }
-    // Roster.
-    roster.replaceChildren();
-    for (const s of sessions) {
-      const time = s.startedAt ? new Date(s.startedAt) : null;
-      const hhmm =
-        time && !Number.isNaN(time.getTime())
-          ? ` — ${String(time.getHours()).padStart(2, "0")}:${String(time.getMinutes()).padStart(2, "0")}`
-          : "";
-      roster.append(
-        ownedEl("div", {
-          owner: OWNER,
-          className: "cc-ccb-roster-row",
-          text: `${s.project} ·${s.shortId}${hhmm}`,
-        }),
-      );
-    }
-    // Controls visibility.
-    const showPanel = !paired && expanded;
-    pairPanel.classList.toggle("cc-hidden", !showPanel);
-    connectBtn.classList.toggle("cc-hidden", paired || expanded);
-    rescanBtn.classList.toggle("cc-hidden", !paired);
-    forgetBtn.classList.toggle("cc-hidden", !paired);
-    drawerBtn.classList.toggle("cc-hidden", !paired);
-    if (!paired) setDrawer(false);
-    if (!showPanel) {
+
+    // Leaving setup clears any pairing status/error.
+    if (!showSetup) {
       pairMsg.textContent = "";
-      pairMsg.classList.remove("cc-danger-text");
+      pairMsg.classList.remove("cc-cct-err");
     }
   };
 
@@ -706,18 +781,21 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
       .catch(() => undefined);
   };
 
-  ctx.listen(connectBtn, "click", () => {
+  ctx.listen(setupLine, "click", () => {
     expanded = true;
     renderBridge();
     ctx.setTimeout(() => codeInput.focus(), 30);
   });
-  ctx.listen(notNowBtn, "click", () => {
+  ctx.listen(cancelBtn, "click", () => {
     expanded = false;
     renderBridge();
   });
   ctx.listen(rescanBtn, "click", () => {
-    statusRow.textContent = "Scanning…";
-    statusRow.classList.remove("cc-ok-text");
+    // Swap the status result to "… scanning" until the fresh scan lands.
+    connResultGlyph.className = "cc-cct-gl cc-cct-dim";
+    connResultGlyph.textContent = "…";
+    connResultText.className = "cc-cct-tx cc-cct-dim";
+    connResultText.textContent = " scanning";
     void browser.runtime.sendMessage({ type: "cc:bridge:rescan" }).catch(() => undefined);
     // Freshly found sessions need a beat to complete the welcome handshake.
     ctx.setTimeout(loadStatus, 900);
@@ -725,13 +803,13 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   ctx.listen(pairBtn, "click", () => {
     const code = codeInput.value.trim();
     if (!code) {
-      pairMsg.textContent = "Paste the pairing code from your terminal first.";
-      pairMsg.classList.add("cc-danger-text");
+      pairMsg.textContent = "paste the pairing code from your terminal first";
+      pairMsg.classList.add("cc-cct-err");
       return;
     }
     pairBtn.setAttribute("disabled", "true");
-    pairMsg.classList.remove("cc-danger-text");
-    pairMsg.textContent = "Pairing…";
+    pairMsg.classList.remove("cc-cct-err");
+    pairMsg.textContent = "pairing…";
     void browser.runtime
       .sendMessage({ type: "cc:bridge:pair", code })
       .then((res: unknown) => {
@@ -744,21 +822,22 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
           codeInput.value = "";
           renderBridge();
         } else {
-          pairMsg.textContent = r?.reason ?? "Pairing failed — try again.";
-          pairMsg.classList.add("cc-danger-text");
+          pairMsg.textContent = r?.reason ?? "pairing failed — try again";
+          pairMsg.classList.add("cc-cct-err");
         }
       })
       .catch(() => {
         if (ctx.signal.aborted) return;
         pairBtn.removeAttribute("disabled");
-        pairMsg.textContent = "Pairing failed — try again.";
-        pairMsg.classList.add("cc-danger-text");
+        pairMsg.textContent = "pairing failed — try again";
+        pairMsg.classList.add("cc-cct-err");
       });
   });
-  ctx.listen(forgetBtn, "click", () => {
+  ctx.listen(unpairLine, "click", () => {
     void browser.runtime.sendMessage({ type: "cc:bridge:forget" }).catch(() => undefined);
     bridgeStatus = { paired: false, hasPermission: false, sessions: [] };
     expanded = false;
+    setAdvanced(false);
     renderBridge();
   });
 
@@ -767,6 +846,14 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   ctx.on("bridge:changed", ({ sessions, paired }) => {
     bridgeStatus = { paired, hasPermission: bridgeStatus.hasPermission, sessions };
     renderBridge();
+  });
+  // Chip shortcut: land the user inside the setup flow, not just near it.
+  ctx.on("ui:bridge-setup", () => {
+    if (!bridgeStatus.paired) {
+      expanded = true;
+      renderBridge();
+      ctx.setTimeout(() => codeInput.focus(), 150);
+    }
   });
   loadStatus();
   renderBridge();

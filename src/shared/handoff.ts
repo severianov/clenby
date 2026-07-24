@@ -29,7 +29,16 @@ export const HANDOFF_HANDLES: readonly HandoffHandle[] = ["continue", "review", 
 
 /** What the body carries. Selection scope carries no answer_id / message_count
  *  and its body is the raw selected text (spec §2). */
-export type HandoffScope = "conversation" | "answer" | "selection";
+export type HandoffScope =
+  | "conversation"
+  | "answer"
+  | "selection"
+  // Collection scopes: the sending feature builds the body itself (its own
+  // export markdown) and hands it over via the bus; the bridge feature only
+  // wraps it in the standard fenced envelope.
+  | "pins"
+  | "highlights"
+  | "notes";
 
 /**
  * The pre-prompt paragraph written immediately under the frontmatter, before

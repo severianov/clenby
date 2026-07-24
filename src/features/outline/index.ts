@@ -54,6 +54,9 @@ const SVG_DL =
   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
 const SVG_OK =
   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+/** Same paper-plane the answer-toolbar uses for "Send to Claude Code". */
+const SVG_SEND =
+  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>';
 
 // Heading/label extraction lives in @/shared/message-outline — shared with
 // the Conversation Atlas, which maps the same questions + answer headings.
@@ -305,13 +308,29 @@ export const outline: FeatureModule = {
       flashOk(b, SVG_DL);
     };
 
-    /** The slim export toolbar row: count left, copy ⧉ + download ⬇ right. */
+    /** Pending bridge-send button — flashed ✓/red by the next send-result. */
+    let sendPending: HTMLButtonElement | null = null;
+    ctx.on("bridge:send-result", ({ ok }) => {
+      const b = sendPending;
+      if (!b) return;
+      sendPending = null;
+      if (ok) {
+        flashOk(b, SVG_SEND);
+      } else {
+        b.classList.add("cc-danger-text");
+        ctx.setTimeout(() => b.classList.remove("cc-danger-text"), 1600);
+      }
+    });
+
+    /** The slim export toolbar row: count left, copy ⧉ + download ⬇ (+ send
+     *  ✈ to Claude Code for the collection scopes) right. */
     const addExportToolbar = (spec: {
       count: string;
       copyTitle: string;
       dlTitle: string;
       filename: string;
       md: () => string;
+      send?: { title: string; scope: "pins" | "highlights" };
     }): void => {
       const row = ownedEl("div", { owner: OWNER, className: "cc-hl-actions" });
       row.append(ownedEl("span", { owner: OWNER, className: "cc-faint", text: spec.count }));
@@ -321,6 +340,15 @@ export const outline: FeatureModule = {
       const bd = mkIcon(SVG_DL, spec.dlTitle);
       bd.dataset["ccAct"] = act(() => downloadMd(bd, spec.md, spec.filename));
       btns.append(bc, bd);
+      if (spec.send) {
+        const send = spec.send;
+        const bs = mkIcon(SVG_SEND, send.title);
+        bs.dataset["ccAct"] = act(() => {
+          sendPending = bs;
+          ctx.bus.emit("bridge:send", { handle: "context", scope: send.scope, body: spec.md() });
+        });
+        btns.append(bs);
+      }
       row.append(btns);
       refs.list.append(row);
     };
@@ -365,6 +393,7 @@ export const outline: FeatureModule = {
         dlTitle: "Download highlights.md",
         filename: "highlights.md",
         md: hlMarkdown,
+        send: { title: "Send all highlights to Claude Code", scope: "highlights" },
       });
     };
 
@@ -375,6 +404,7 @@ export const outline: FeatureModule = {
         dlTitle: "Download pinned-answers.md",
         filename: "pinned-answers.md",
         md: pinsMarkdown,
+        send: { title: "Send all pinned answers to Claude Code", scope: "pins" },
       });
     };
 

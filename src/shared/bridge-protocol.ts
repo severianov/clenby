@@ -83,6 +83,9 @@ export interface WelcomeFrame {
   t: "welcome";
   sessionId: string;
   bridge_version?: string;
+  /** Human handle derived from sessionId on the BRIDGE side (`calm-falcon`).
+   *  The extension only displays it — single source, no wordlist drift. */
+  petname?: string;
   project: string;
   path: string;
   pid?: number;
@@ -283,8 +286,10 @@ export function parseInboundFrame(
 export interface BridgeSession {
   /** The routing ADDRESS a handoff targets. */
   sessionId: string;
-  /** First 4 hex of sessionId — disambiguates two same-folder sessions. */
+  /** First 4 hex of sessionId — technical disambiguator (fallback label). */
   shortId: string;
+  /** Bridge-supplied human handle (`calm-falcon`); absent on old bridges. */
+  petname?: string;
   /** The port this session's socket is on. */
   port: number;
   /** basename(cwd) — the human label (labels but never addresses). */

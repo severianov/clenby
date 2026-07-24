@@ -12,19 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node ≥23.6 matches the root engines field (node --test runs the .ts
+      # test files via native type stripping, stable from 23.6).
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: yarn
+          node-version: 24
+          cache: npm
 
       - name: Install
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Typecheck
         run: npx tsc --noEmit
 
       - name: Build (Chrome MV3)
-        run: yarn build
+        run: npm run build
 
   test:
     name: Tests
@@ -37,12 +39,37 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: yarn
+          cache: npm
 
       - name: Install
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Run tests
-        # yarn test = node --test with the tests/_alias.mjs import hook that
+        # npm test = node --test with the tests/_alias.mjs import hook that
         # resolves the project's @/ alias for direct-from-source unit tests.
-        run: yarn test
+        # Scoped to tests/ — the bridge suite has its own job below with its
+        # own dependency install (its node_modules are separate).
+        run: npm test
+
+  bridge:
+    name: Bridge tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The npm package claims engines >=18.14.1 — prove it on every push.
+        node: [18, 20, 24]
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install
+        run: npm ci
+
+      - name: Run tests
+        run: npm test

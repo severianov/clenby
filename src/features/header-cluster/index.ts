@@ -282,6 +282,30 @@ export const headerCluster: FeatureModule = {
       }
       return undefined;
     };
+    // Composer-chip shortcut (bus, cross-feature): open the gear menu, then
+    // scroll to and flash the Claude Code card so the user lands EXACTLY on
+    // the thing they clicked for — not at the top of a long panel.
+    ctx.on("ui:bridge-setup", () => {
+      if (popTools.classList.contains("cc-hidden")) {
+        if (cluster.classList.contains("cc-hidden")) {
+          closeAll();
+          setGeometry(popTools, { top: 64, right: 16 });
+          popTools.classList.remove("cc-hidden");
+        } else {
+          toggle(gearBtn, popTools);
+        }
+      }
+      ctx.setTimeout(() => {
+        const zoneEl = popTools.querySelector<HTMLElement>("#cc-gear-ccb");
+        if (!zoneEl) return;
+        zoneEl.scrollIntoView({ block: "start", behavior: "smooth" });
+        zoneEl.classList.remove("cc-zone-flash");
+        void zoneEl.offsetWidth; // restart the animation
+        zoneEl.classList.add("cc-zone-flash");
+        ctx.setTimeout(() => zoneEl.classList.remove("cc-zone-flash"), 1700);
+      }, 80);
+    });
+
     try {
       browser.runtime.onMessage.addListener(onRuntimeMessage);
       ctx.onCleanup(() => browser.runtime.onMessage.removeListener(onRuntimeMessage));

@@ -123,27 +123,27 @@ export const claudeCodeBridge: FeatureModule = {
       return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     };
 
-    /** The chip's visible label for a session, disambiguated when needed. */
-    const labelFor = (s: BridgeSession): string => {
-      if (!disambiguated(s)) return s.project;
-      const time = hhmm(s.startedAt);
-      return `${s.project} ·${s.shortId}${time ? ` — ${time}` : ""}`;
-    };
+    /** The chip's visible label: ALWAYS project + petname (owner decision) —
+     *  "clenby · calm-falcon". Never hex on the chip; the id lives only in
+     *  the dropdown's small print. */
+    const labelFor = (s: BridgeSession): string =>
+      s.petname ? `${s.project} · ${s.petname}` : s.project;
 
     const renderChip = (): void => {
       const bound = boundSession();
       if (!bound) {
         menu.classList.add("cc-hidden");
-        if (!paired) return; // unpaired: chip removed by place() below
-        // Paired but no live session — a visible idle state, so "connected vs
-        // not" is never a guess. Click rescans the loopback ports on demand.
+        // The chip is ALWAYS visible (owner decision): it is the connection
+        // indicator, so it must exist before any connection — paired or not.
+        // Click: unpaired → open the gear menu to set up; paired → rescan.
         chipBtn.classList.add("cc-ccb-idle");
         chipBtn.replaceChildren(
           ownedEl("span", { owner: OWNER, className: "cc-ccb-dot", text: DOT }),
-          ownedEl("span", { owner: OWNER, className: "cc-ccb-label", text: "not connected" }),
+          ownedEl("span", { owner: OWNER, className: "cc-ccb-label", text: "clenby-bridge" }),
         );
-        chipBtn.title =
-          "No Claude Code session connected — click to check now. Start Claude Code in a project folder to connect.";
+        chipBtn.title = paired
+          ? "No Claude Code session connected — click to check now. Start Claude Code in a project folder to connect."
+          : "Claude Code isn't linked yet — click to set it up.";
         chipBtn.setAttribute("aria-label", chipBtn.title);
         chipBtn.removeAttribute("aria-haspopup");
         chipBtn.removeAttribute("aria-expanded");
@@ -186,7 +186,11 @@ export const claudeCodeBridge: FeatureModule = {
         row.dataset["sid"] = s.sessionId;
         const time = hhmm(s.startedAt);
         row.append(
-          ownedEl("span", { owner: OWNER, className: "cc-ccb-opt-name", text: s.project }),
+          ownedEl("span", {
+            owner: OWNER,
+            className: "cc-ccb-opt-name",
+            text: s.petname ? `${s.project} · ${s.petname}` : s.project,
+          }),
           ownedEl("span", {
             owner: OWNER,
             className: "cc-ccb-opt-sub",
@@ -234,6 +238,7 @@ export const claudeCodeBridge: FeatureModule = {
       ev.stopPropagation();
       if (sessions.length === 0) {
         if (paired) rescan();
+        else ctx.bus.emit("ui:bridge-setup", {}); // gear opens, scrolls, flashes
         return;
       }
       if (sessions.length < 2) return; // one session → nothing to switch to
@@ -260,9 +265,9 @@ export const claudeCodeBridge: FeatureModule = {
     // row; the chip joins it as an additive sibling (never claude's own DOM).
     const place = (): void => {
       const group = document.getElementById("cc-composer-grp");
-      // Paired → the chip is always present (bound session OR the idle state);
-      // unpaired → no chip at all.
-      if (!group || (!paired && boundSession() === null)) {
+      // The chip rides the composer group unconditionally — it IS the
+      // connection indicator, so it exists in every state.
+      if (!group) {
         if (slot.parentElement) slot.remove();
         return;
       }
@@ -279,6 +284,7 @@ export const claudeCodeBridge: FeatureModule = {
       scope: HandoffScope,
       uuid: string | undefined,
       selectionText: string | undefined,
+      prebuiltBody?: string,
     ): { markdown: string; meta: PushMeta } | { error: string } => {
       const bound = boundSession();
       if (!bound) return { error: "No Claude Code session is connected." };
@@ -300,7 +306,13 @@ export const claudeCodeBridge: FeatureModule = {
 
       let body: string;
       let meta: HandoffMeta;
-      if (scope === "selection") {
+      if (scope === "pins" || scope === "highlights" || scope === "notes") {
+        // Collection scopes: the sender built its own export markdown.
+        const text = (prebuiltBody ?? "").trim();
+        if (!text) return { error: `Nothing to send — no ${scope} yet.` };
+        body = text;
+        meta = base;
+      } else if (scope === "selection") {
         const text = (selectionText ?? "").trim();
         if (!text) return { error: "Nothing was selected." };
         body = text;
@@ -336,13 +348,13 @@ export const claudeCodeBridge: FeatureModule = {
       };
     };
 
-    ctx.on("bridge:send", ({ handle, scope, uuid, selectionText }) => {
+    ctx.on("bridge:send", ({ handle, scope, uuid, selectionText, body }) => {
       const bound = boundSession();
       if (!bound) {
         ctx.bus.emit("bridge:send-result", { ok: false, reason: "No session connected." });
         return;
       }
-      const built = assemble(handle, scope, uuid, selectionText);
+      const built = assemble(handle, scope, uuid, selectionText, body);
       if ("error" in built) {
         ctx.bus.emit("bridge:send-result", { ok: false, reason: built.error });
         return;

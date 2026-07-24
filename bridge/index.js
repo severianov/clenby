@@ -28,6 +28,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { PORT_RANGE, LOOPBACK_HOST } from './src/constants.js';
 import { loadOrCreateToken, rotateToken } from './src/token.js';
+import { tokenPath } from './src/paths.js';
 import { createSession } from './src/session.js';
 import { HandoffStore } from './src/handoffs.js';
 import { WsBridge } from './src/ws-server.js';
@@ -80,6 +81,27 @@ function runAudit() {
   );
 }
 
+/** `remove-token` / `--remove-token`: delete the pairing token — the one
+ *  thing the bridge ever writes to disk. After this (plus Forget in the
+ *  extension and `claude mcp remove clenby`), no trace of the bridge remains. */
+function runRemoveToken() {
+  const file = tokenPath();
+  try {
+    fs.unlinkSync(file);
+    process.stdout.write(`Pairing token deleted (${file}).\n`);
+  } catch (err) {
+    if (err && err.code === 'ENOENT') {
+      process.stdout.write(`No token to delete (${file} does not exist).\n`);
+    } else {
+      throw err;
+    }
+  }
+  process.stdout.write(
+    'Running bridges keep their in-memory copy until their sessions end. ' +
+      'To remove everything: Forget in the extension gear menu, then `claude mcp remove clenby`.\n',
+  );
+}
+
 /** `--rotate-token`: regenerate the file, print the new code to stdout, exit. */
 function runRotate() {
   const { token, path: file } = rotateToken();
@@ -105,7 +127,12 @@ async function runServer() {
   try {
     port = await bridge.start(PORT_RANGE);
   } catch (err) {
-    warn(`could not bind a loopback port (${err.message}); running MCP-only`);
+    warn(
+      `no free bridge port (${err.message}) — all ${PORT_RANGE.length} are in use, ` +
+        'likely by other Claude Code sessions. This session still answers local tools ' +
+        '(whoami, handoffs already received) but has no live link to the extension; ' +
+        'end another session to free a port, then restart this one.',
+    );
   }
 
   // Pairing banner — STDERR (see file header). The token is printed here
@@ -147,6 +174,10 @@ async function main() {
   }
   if (argv.includes('audit') || argv.includes('--audit')) {
     runAudit();
+    return;
+  }
+  if (argv.includes('remove-token') || argv.includes('--remove-token')) {
+    runRemoveToken();
     return;
   }
   await runServer();

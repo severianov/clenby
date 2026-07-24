@@ -4691,195 +4691,290 @@ p > .cc-clk-box {
   filter: none;
 }
 
-/* ---- gear pairing + status zone ---- */
-.cc-ccb-status {
-  font: 500 12px var(--cc-sans, sans-serif);
-  color: var(--cc-text-muted);
+/* ---- Claude Code zone — flash target + Terminal skin ---------------------
+ * The zone still flashes on the composer-chip shortcut (keyed off the
+ * #cc-gear-ccb id). Below the eyebrow the whole zone renders as a tiny
+ * terminal window (built in gear-menu.ts). The terminal is deliberately
+ * FIXED-DARK on every theme — a terminal is dark — so its frame + text
+ * palette are literal colors, NOT var(--cc-*) tokens.
+ * ======================================================================== */
+.cc-gear-zone.cc-zone-flash {
+  animation: ccZoneFlash 1.6s ease-out 1;
 }
-.cc-ccb-roster {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.cc-ccb-roster:empty {
-  display: none;
-}
-.cc-ccb-roster-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--cc-surface-raised);
-  font: 500 11.5px var(--cc-mono, monospace);
-  color: var(--cc-text);
-}
-.cc-ccb-roster-row::before {
-  content: "◍";
-  color: var(--cc-ok, hsl(95 30% 55%));
-}
-.cc-ccb-pair {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.cc-ccb-pair-title {
-  font: 700 12.5px var(--cc-sans, sans-serif);
-  color: var(--cc-text);
-}
-.cc-ccb-pair-body {
-  font: 400 11.5px var(--cc-sans, sans-serif);
-  line-height: 1.45;
-  color: var(--cc-text-muted);
-}
-.cc-ccb-cmd {
-  display: block;
-  padding: 7px 9px;
-  border-radius: 7px;
-  background: var(--cc-bg);
-  border: 1px solid var(--cc-border);
-  font: 500 11px var(--cc-mono, monospace);
-  color: var(--cc-text);
-  word-break: break-all;
-  user-select: all;
-  cursor: copy;
-  transition: border-color 0.15s;
-}
-.cc-ccb-cmd:hover {
-  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
-}
-@media (prefers-reduced-motion: reduce) {
-  .cc-ccb-cmd {
-    transition: none;
+@keyframes ccZoneFlash {
+  0% {
+    outline: 2px solid var(--cc-accent);
+    outline-offset: 3px;
+    background: color-mix(in srgb, var(--cc-accent) 10%, transparent);
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 3px;
   }
 }
-.cc-ccb-msg {
-  min-height: 12px;
-  font: 500 11px var(--cc-sans, sans-serif);
-  color: var(--cc-text-muted);
-}
-.cc-ccb-connect,
-.cc-ccb-forget {
-  align-self: flex-start;
-}
 
-/* ---- Claude Code zone: status header, pairing wizard, commands drawer ---- */
-.cc-ccb-head {
+/* Frame: dark body, darker title bar, 1px hairline border. */
+.cc-cct {
+  margin-top: 8px;
+  border: 1px solid hsl(0 0% 100% / 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #101012;
+}
+.cc-cct-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 2px;
+  padding: 6px 10px;
+  background: #18181b;
+  border-bottom: 1px solid hsl(0 0% 100% / 0.12);
 }
-.cc-ccb-head .cc-ccb-status {
-  flex: 1;
-  min-width: 0;
-}
-.cc-ccb-head-dot {
+.cc-cct-dots {
+  display: flex;
+  gap: 5px;
   flex: none;
+}
+.cc-cct-tdot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--cc-text-faint);
+  background: hsl(0 0% 100% / 0.18);
 }
-.cc-ccb-dot-on {
-  background: var(--cc-ok, hsl(95 20% 50%));
-  box-shadow: 0 0 6px color-mix(in srgb, var(--cc-ok, hsl(95 20% 50%)) 55%, transparent);
+.cc-cct-tlabel {
+  font: 10.5px var(--cc-mono, monospace);
+  color: hsl(0 0% 55%);
+  letter-spacing: 0.02em;
 }
-.cc-ccb-dot-idle {
-  background: var(--cc-gold);
+.cc-cct-body {
+  padding: 9px 11px;
+  font: 11px/1.75 var(--cc-mono, monospace);
+  color: hsl(60 5% 87%);
+  background: #101012;
 }
-.cc-ccb-dot-off {
-  background: var(--cc-text-faint);
-}
-.cc-ccb-rescan {
+
+/* Color roles (fixed — the terminal ignores the page theme). */
+.cc-cct-prompt {
   flex: none;
-  border: 1px solid var(--cc-border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--cc-text-muted);
-  font: 500 10.5px var(--cc-sans, sans-serif);
-  padding: 2px 9px;
-  cursor: pointer;
+  color: hsl(0 0% 47%);
 }
-.cc-ccb-rescan:hover {
-  color: var(--cc-text);
-  border-color: color-mix(in srgb, var(--cc-accent) 50%, transparent);
+.cc-cct-dim {
+  color: hsl(0 0% 40%);
 }
-.cc-ccb-step {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 9px;
+.cc-cct-tx {
+  color: hsl(60 5% 87%);
 }
-.cc-ccb-step-n {
+.cc-cct-green {
+  color: hsl(95 20% 55%);
+}
+.cc-cct-gold {
+  color: hsl(46 74% 66%);
+}
+.cc-cct-accent {
+  color: hsl(15 63% 60%);
+}
+.cc-cct-danger {
+  color: hsl(0 72% 62%);
+}
+.cc-cct-gl {
   flex: none;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--cc-accent) 18%, transparent);
-  color: var(--cc-accent);
-  font: 700 10px/17px var(--cc-sans, sans-serif);
-  text-align: center;
 }
-.cc-ccb-step-l {
-  font: 600 11.5px var(--cc-sans, sans-serif);
-  color: var(--cc-text);
+.cc-cct-spacer {
+  height: 1.75em;
 }
-.cc-ccb-step-b {
-  margin: 5px 0 0 25px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.cc-ccb-note {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
-  font: 10.5px/1.5 var(--cc-sans, sans-serif);
-  color: var(--cc-text-faint);
-}
-.cc-ccb-note .cc-ccb-cmd {
-  margin-top: 5px;
-}
-.cc-ccb-drawer-t {
+
+/* A clickable line resets to look like plain terminal text. */
+.cc-cct-btn,
+.cc-cct-cmd {
   display: block;
   width: 100%;
-  margin-top: 8px;
-  padding: 6px 9px;
-  border: 1px solid var(--cc-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--cc-text-muted);
-  font: 500 11px var(--cc-sans, sans-serif);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
   text-align: left;
   cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.13s;
 }
-.cc-ccb-drawer-t:hover {
-  background: var(--cc-surface-raised);
-  color: var(--cc-text);
+.cc-cct-cmd {
+  display: flex;
+  align-items: baseline;
 }
-.cc-ccb-drawer-t[aria-expanded="true"] {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+.cc-cct-btn:hover,
+.cc-cct-cmd:hover {
+  background: hsl(0 0% 100% / 0.04);
 }
-.cc-ccb-drawer {
-  border: 1px solid var(--cc-border);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  padding: 9px 10px 10px;
+.cc-cct-btn:focus-visible,
+.cc-cct-cmd:focus-visible,
+.cc-cct-rescan:focus-visible,
+.cc-cct-link:focus-visible,
+.cc-cct-pair:focus-visible {
+  outline: 2px solid hsl(15 63% 60%);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+/* Copyable command line: "$ <cmd> ⧉" — the command truncates, the glyph stays. */
+.cc-cct-cmdtx {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: hsl(60 5% 87%);
+}
+.cc-cct-copy {
+  flex: none;
+  margin-left: 8px;
+  color: hsl(0 0% 47%);
+  transition: color 0.13s;
+}
+.cc-cct-cmd:hover .cc-cct-copy {
+  color: hsl(60 5% 87%);
+}
+.cc-cct-copied .cc-cct-copy {
+  color: hsl(95 20% 55%);
+}
+
+/* Advanced block + uninstall box (not-linked state only). */
+.cc-cct-adv {
+  margin-top: 4px;
+}
+.cc-cct-remove {
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: 1px solid hsl(0 72% 62% / 0.35);
+  background: hsl(0 72% 62% / 0.06);
+  border-radius: 6px;
+}
+
+/* Inline rescan control in the connected status line. */
+.cc-cct-rescan {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: hsl(0 0% 47%);
+  cursor: pointer;
+  transition: color 0.13s;
+}
+.cc-cct-rescan:hover {
+  color: hsl(60 5% 87%);
+}
+
+/* Setup: dark code input + accent pair button. */
+.cc-cct-pairrow {
+  display: flex;
+  gap: 6px;
+  margin: 3px 0;
+}
+.cc-cct-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid hsl(0 0% 100% / 0.14);
+  border-radius: 5px;
+  background: #0c0c0e;
+  color: hsl(60 5% 87%);
+  font: 11px var(--cc-mono, monospace);
+  outline: none;
+}
+.cc-cct-input::placeholder {
+  color: hsl(0 0% 40%);
+}
+.cc-cct-input:focus {
+  border-color: hsl(15 63% 60%);
+}
+.cc-cct-pair {
+  flex: none;
+  padding: 5px 12px;
+  border: 1px solid hsl(15 63% 60%);
+  border-radius: 5px;
+  background: hsl(15 63% 60%);
+  color: #fff;
+  font: 600 11px var(--cc-mono, monospace);
+  cursor: pointer;
+  transition: filter 0.13s;
+}
+.cc-cct-pair:hover {
+  filter: brightness(1.08);
+}
+.cc-cct-pair[disabled] {
+  opacity: 0.5;
+  cursor: default;
+  filter: none;
+}
+.cc-cct-msg {
+  min-height: 12px;
+  font: 10.5px var(--cc-mono, monospace);
+  color: hsl(0 0% 47%);
+}
+.cc-cct-msg.cc-cct-err {
+  color: hsl(0 72% 62%);
+}
+
+/* Setup footer + verify/cancel links (dim, brighten to normal on hover). */
+.cc-cct-foot {
+  margin-top: 6px;
+  font: 10.5px/1.6 var(--cc-mono, monospace);
+  color: hsl(0 0% 40%);
+}
+.cc-cct-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: hsl(0 0% 40%);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.13s;
+}
+.cc-cct-link:hover {
+  color: hsl(60 5% 87%);
+}
+.cc-cct-verify {
+  margin-top: 4px;
+}
+
+/* Connected roster: "◍ project · petname .......... HH:MM". */
+.cc-cct-roster {
   display: flex;
   flex-direction: column;
-  gap: 9px;
 }
-.cc-ccb-cmdrow {
+.cc-cct-rrow {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: baseline;
+  gap: 6px;
 }
-.cc-ccb-cmdrow-l {
-  font: 500 10.5px var(--cc-sans, sans-serif);
-  color: var(--cc-text-muted);
+.cc-cct-rname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: hsl(60 5% 87%);
 }
-.cc-ccb-forget {
-  margin-top: 8px;
+.cc-cct-rtime {
+  flex: none;
+  color: hsl(0 0% 40%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-gear-zone.cc-zone-flash {
+    animation: none;
+    outline: 2px solid var(--cc-accent);
+    outline-offset: 3px;
+  }
+  .cc-cct-btn,
+  .cc-cct-cmd,
+  .cc-cct-copy,
+  .cc-cct-rescan,
+  .cc-cct-link,
+  .cc-cct-pair {
+    transition: none;
+  }
 }

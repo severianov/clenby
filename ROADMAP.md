@@ -1,26 +1,27 @@
 # Clenby roadmap
 
-What's coming, in rough order. No dates — items ship when they're solid.
-Have an idea or a need? [Open an issue](../../issues) — the roadmap bends to
+What's coming, in rough order. No dates; items ship when they're solid.
+Have an idea or a need? [Open an issue](../../issues); the roadmap follows
 real usage.
 
 ## Now — hardening the Claude Code bridge for release
 
 - **Firefox pairing.** The bridge works on Firefox once paired, but the
-  permission prompt currently can't be triggered from the pairing panel there.
-  A small extension settings page will host the grant.
-- **Publishing `clenby-bridge` to npm** so the one-line setup works everywhere,
-  with provenance (the package verifiably built from this repository).
+  permission prompt can't currently be triggered from the pairing panel
+  there. A small extension settings page will host the grant.
+- **Publishing `clenby-bridge` to npm** so the one-line setup works
+  everywhere, with provenance (the package verifiably built from this
+  repository).
 - **Extension identity pinning.** Once the store listing exists, the bridge
   will accept only Clenby's published extension ID at the handshake.
-- **More connection-layer tests** on the extension side to match the bridge's
-  suite.
+- **More connection-layer tests** on the extension side, to match the
+  bridge's suite.
 
 ## Next — smoothing the bridge experience
 
 - **Hands-free handoff pickup.** An optional Claude Code hook so a pending
-  handoff attaches itself to your next message — no more asking Claude to
-  fetch it — plus a status-line indicator ("◍ 1 handoff pending") so you see
+  handoff attaches itself to your next message, no more asking Claude to
+  fetch it, plus a status-line indicator ("◍ 1 handoff pending") so you see
   arrivals at a glance.
 - **Settings backup.** Export/import of your themes, toggles, and overrides,
   so a reinstall or a new machine doesn't mean reconfiguring.

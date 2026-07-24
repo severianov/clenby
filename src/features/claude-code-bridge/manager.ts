@@ -293,6 +293,9 @@ export class BridgeManager {
         conn.session = {
           sessionId: frame.sessionId,
           shortId: shortIdOf(frame.sessionId),
+          ...(typeof frame.petname === "string" && frame.petname.length > 0 && frame.petname.length <= 40
+            ? { petname: frame.petname }
+            : {}),
           port: conn.port,
           project: frame.project || "session",
           path: frame.path,

@@ -14,11 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with it is chosen at pickup, where it belongs: `/handoff` in Claude Code
   follows your words ("review this", "turn it into tests", anything), so the
   old Continue/Review/Context picker became redundant and is gone.
-- **Claude Code settings zone redesigned** — pairing is a numbered 3-step
-  wizard with click-to-copy command chips; a status dot shows
-  connected/paired/off at a glance; Rescan moved inline; and a collapsible
-  "Terminal commands" drawer collects every CLI (pairing code, audit, rotate
-  token) with plain-language labels.
+- **Claude Code settings zone wears a "Terminal" skin** — the whole zone now
+  renders as a small terminal window (`clenby-bridge`): status reads
+  `○ not linked` / `● connected — N session(s)`, pairing is a
+  `# 1 · register … # 2 · code … # 3 · paste` sequence with click-to-copy
+  `$ …` command lines, Rescan is an inline `(⟳)`, and install / audit / rotate
+  / uninstall live behind `$ clenby advanced`. The frame stays deliberately
+  dark on light themes — a terminal is dark.
 
 - **Themes: the mode is now a hard Light/Dark choice** (the Auto option was
   removed). A themed preset renders exactly the chosen mode: the compiler
@@ -133,6 +135,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Send collections to Claude Code** — the outline's Pinned and Marks
+  toolbars gain a send button next to copy/download: one click hands ALL
+  pinned answers (or all highlights) to your connected session as a normal
+  fenced handoff. The Notes panel gets the same button (list and editor
+  views), sending this chat's notes. Same pull-based pickup as any handoff.
+- **Bridge: sessions get human names** — every Claude Code session now has a
+  deterministic petname derived from its id (`calm-falcon`, `quiet-maple`)
+  instead of asking people to tell hex digits apart. Shown on the composer
+  chip, the session dropdown, the gear roster, and the send popover; `whoami`
+  reports it, so asking a terminal "which one are you?" matches the chip.
+  Generated on the bridge side only — the extension displays what the
+  handshake carries, so names can't drift between the two halves.
 - **Bridge: one-command handoff pickup, zero setup** — the bridge now ships a
   `handoff` MCP prompt, which Claude Code automatically exposes as the
   `/mcp__clenby__handoff` slash command for every user who registered the
