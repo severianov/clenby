@@ -16,10 +16,27 @@ name: claude.ai canary
 # remote values are passed as ARGUMENTS, never interpolated into shell, YAML or
 # a format string. Everything they touch is also charset-clamped on extraction.
 
+# ─────────────────────────────────────────────────────────────────────────────
+# DORMANT — the hourly schedule is deliberately removed. DO NOT re-add it
+# without re-testing first.
+#
+# Run #1 (2026-07-24) proved GitHub-hosted runners cannot reach the probe:
+#   from a home IP      → HTTP 200, data-build-id="abf2f5bc42"
+#   from a GitHub runner→ no build id at all
+# Same command, same headers. Cloudflare challenges datacenter IPs, and this
+# repo will NOT work around that — spoofing a way past someone's bot
+# protection is fragile and is not ours to circumvent.
+#
+# The job is sound; only the vantage point is wrong. It moves to a systemd
+# user timer on the maintainer's machine, which probes from a real browser IP
+# and files the same issue via `gh`. Until then, breakage is caught by the
+# selector-health panel and its Copy report / Open a GitHub issue actions.
+#
+# workflow_dispatch is kept so it stays one click to re-test whether the block
+# has lifted. If a manual run ever prints a build id again, restore the cron.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
-  schedule:
-    # Hourly, offset off the hour to avoid the scheduler's peak-minute queue.
-    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
