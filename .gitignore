@@ -14,11 +14,9 @@ chrome-extension-build/
 stats.html
 .DS_Store
 
-# Internal — working docs, roadmap, strategy, design artifacts, private data.
-# Never publish; keeps the public repo to just the product.
+# Local working files — not part of the shipped extension.
 internal/
 CLAUDE.md
 
-# Website — its own separate repo, kept here for convenience only.
-# Never tracked by the extension repo.
+# The site lives in its own repository, not here.
 website/
