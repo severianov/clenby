@@ -78,13 +78,13 @@ jobs:
           fi
 
       - name: Install
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Test
         run: npm test
 
       - name: Tag and package.json versions must agree
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
           TAG: ${{ github.ref_name }}
         run: |
@@ -105,5 +105,5 @@ jobs:
         # Tag pushes only. workflow_dispatch is a dry run by design: it proves
         # the tarball builds and the tests pass without a publish that cannot
         # be taken back.
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: npm publish

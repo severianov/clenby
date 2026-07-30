@@ -94,7 +94,7 @@ export function detectAgent(nav: Navigator = navigator): AgentInfo {
       /(Edg)\/(\d+)/.exec(ua) ??
       /(OPR)\/(\d+)/.exec(ua) ??
       /(Chrome)\/(\d+)/.exec(ua) ??
-      /Version\/(\d+).*(Safari)/.exec(ua);
+      /(Safari)\/\d+/.exec(ua);
     if (m) {
       const label = m[1] === "Edg" ? "Edge" : m[1] === "OPR" ? "Opera" : m[1];
       browserName = `${label} ${m[2] ?? ""}`.trim();
@@ -272,7 +272,11 @@ export function issueUrl(input: ReportInput, body: string): string {
       "\n\n---\n\n**⚠ This report was trimmed to fit a URL.** " +
       'Use "Copy report" in the selector-health panel and paste the full version here.';
     const room = Math.floor(body.length * (MAX_ENCODED_BODY / encoded.length)) - note.length;
-    finalBody = body.slice(0, Math.max(0, room)) + note;
+    // slice() can cut a surrogate pair in half, and encodeURIComponent
+    // throws URIError on a lone surrogate — which would kill this button
+    // precisely when the report is long enough to need trimming.
+    const cut = body.slice(0, Math.max(0, room)).replace(/[\uD800-\uDBFF]$/, "");
+    finalBody = cut + note;
     encoded = encodeURIComponent(finalBody);
   }
   const params = new URLSearchParams({
