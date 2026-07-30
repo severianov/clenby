@@ -180,6 +180,9 @@ to do on your machine.
 
 MIT. See [LICENSE](./LICENSE).
 
+Take what's useful. If Anthropic builds any of this into claude.ai natively,
+good — I'd rather use these features than maintain them.
+
 ## Contributing
 
 Issues, ideas, and pull requests are welcome. If claude.ai broke an anchor or a feature could work better for you, open an issue. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, repo layout, and the feature checklist.
