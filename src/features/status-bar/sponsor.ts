@@ -18,22 +18,36 @@
  * never touches global timer APIs; it is not a feature itself.
  */
 
+import { ownedEl } from "@/ui/root";
+import { brandMark } from "@/ui/brand";
+
 export interface SponsorEntry {
   text: string;
-  /** Optional inline SVG path data (single <path d=…>), no markup strings.
-   *  Reserved for a real sponsor logo — not rendered by the flap animation
-   *  yet (text-only board). */
-  svgPathD?: string;
+  /** Show the Clenby mark before the text (@/ui/brand). Static — the flap
+   *  animation only ever touches the text node beside it. */
+  mark?: true;
   /** Link opened on click (noopener). null = slot reserved, no link yet. */
   href?: string | null;
 }
 
-/** Bundled sponsor rotation — static data only, never fetched. */
+/**
+ * Bundled sponsor rotation — static data only, never fetched.
+ *
+ * SCOPE, deliberately narrow: this slot supports the PROJECT, it does not sell
+ * space. "ad · your brand here" and "sponsor this slot" were removed before
+ * store submission — a reviewer reads the strings, not the intent, and offering
+ * ad inventory rendered on somebody else's product is the exact shape the
+ * Chrome Web Store's ad-injection rules target. Keep entries to: support the
+ * project, or support the project.
+ *
+ * The coffee entry stays href-less until clenby.dev/support exists — a dead
+ * link is worse than a disabled one. When it lands it points THERE, never at
+ * an individual payment provider, so adding or dropping a platform never needs
+ * an extension release.
+ */
 export const SPONSOR_MESSAGES: readonly SponsorEntry[] = [
-  { text: "ad · your brand here", href: null },
-  { text: "☕ buy me a coffee", href: null },
+  { text: "buy me a coffee", mark: true, href: null },
   { text: "⭐ star us on GitHub", href: "https://github.com/severianov/clenby" },
-  { text: "sponsor this slot", href: null },
 ];
 
 /** Scramble alphabet for the split-flap frames. */
@@ -65,10 +79,30 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
     return;
   }
 
+  // The board used to be pure textContent on `slot`. It can't stay that way:
+  // setting textContent wipes child elements, so an <svg> mark would be
+  // destroyed on every one of the 25 animation frames a second. Structure it
+  // once instead — a static mark plus a text node the flapper owns — and the
+  // animation never touches the mark again.
+  slot.textContent = "";
+  const mark = brandMark();
+  mark.classList.add("cc-ad-mark", "cc-hidden");
+  // This module is not a feature and has no OWNER of its own — the slot is
+  // already owner-stamped by the status bar, so inherit it and the runtime
+  // sweep still finds these nodes.
+  const owner = slot.dataset["ccOwner"] ?? "status-bar";
+  const textEl = ownedEl("span", { owner, className: "cc-ad-text" });
+  slot.append(mark, textEl);
+
   let index = 0;
   let target = SPONSOR_MESSAGES[0]?.text ?? "";
   let frame = 0;
   let animating = false;
+
+  /** The mark is per-entry, so it toggles on rotation — never mid-flap. */
+  const applyMark = (entry: SponsorEntry | undefined): void => {
+    mark.classList.toggle("cc-hidden", entry?.mark !== true);
+  };
 
   const reducedMotion = (): boolean =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -96,7 +130,7 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
     target = text;
     if (reducedMotion()) {
       animating = false;
-      slot.textContent = target;
+      textEl.textContent = target;
       return;
     }
     frame = 0;
@@ -112,7 +146,7 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
     const locked = Math.floor(frame / FRAMES_PER_LOCK);
     if (locked >= target.length) {
       animating = false;
-      slot.textContent = target;
+      textEl.textContent = target;
       return;
     }
     let out = "";
@@ -122,7 +156,7 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
           ? (target[i] ?? "")
           : (FLAP_CHARS[Math.floor(Math.random() * FLAP_CHARS.length)] ?? "");
     }
-    slot.textContent = out;
+    textEl.textContent = out;
   }, FLAP_FRAME_MS);
 
   // Message rotation.
@@ -130,6 +164,7 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
     index = (index + 1) % SPONSOR_MESSAGES.length;
     const entry = SPONSOR_MESSAGES[index];
     applyAffordance(entry);
+    applyMark(entry);
     flapTo(entry?.text ?? "");
   }, ROTATE_MS);
 
@@ -140,5 +175,6 @@ export function attachSponsorSlot(slot: HTMLElement, host: SponsorHost): void {
   });
 
   applyAffordance(SPONSOR_MESSAGES[index]);
+  applyMark(SPONSOR_MESSAGES[index]);
   flapTo(target);
 }

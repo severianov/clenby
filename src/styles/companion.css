@@ -180,6 +180,11 @@ html {
 
 /* Sponsor slot (line 3 right — the split-flap "departure board"). */
 .cc-ad {
+  /* inline-flex since the slot gained a static mark alongside the flapping
+     text — it used to be a bare text container. */
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   flex: none;
   border: 1px dashed var(--cc-text-faint);
   border-radius: 5px;
@@ -190,6 +195,21 @@ html {
     opacity 0.25s ease,
     background-color 0.25s ease,
     border-color 0.25s ease;
+}
+/* Sponsor slot internals: a static mark plus the text node the split-flap
+   animation owns. */
+.cc-ad-mark {
+  width: 11px;
+  height: 11px;
+  display: block;
+  flex: none;
+}
+.cc-ad-text {
+  /* Monospace is load-bearing, not decoration: the flapper rewrites this ~25×/s
+     with random glyphs, and in a proportional face each frame is a different
+     width, so the whole chip juddering as it settles. Fixed advance width holds
+     it still — and a split-flap board wants mono anyway. */
+  font-family: var(--cc-mono, monospace);
 }
 .cc-ad:hover {
   opacity: 1;
@@ -586,6 +606,78 @@ html.cc-has-status button[aria-label="Scroll to bottom"] {
   margin-left: auto;
   font: 10px var(--cc-mono, monospace);
   color: var(--cc-text-faint);
+}
+
+/* ---- brand lockup (@/ui/brand.ts) ------------------------------------------
+ * Mark + wordmark as ONE em-scaled object, per brand/lockup.html: mark at
+ * 1.09em so it optically matches the lowercase, 0.42em gap, −0.031em tracking.
+ * Set font-size on the parent and the whole lockup scales together.
+ *
+ * The mark's indigo tile is baked into the SVG and is NOT themed — a logo that
+ * changes colour per preset is not a logo. Only the wordmark takes --cc-text. */
+.cc-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42em;
+  line-height: 1;
+  min-width: 0;
+}
+.cc-brand-mark {
+  width: 1.09em;
+  height: 1.09em;
+  display: block;
+  flex: none;
+}
+.cc-brand-word {
+  font-weight: 640;
+  letter-spacing: -0.031em;
+  color: var(--cc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* "version · MIT" — a link to the repo, sitting at the far end of the masthead.
+ * Deliberately the quietest thing in the menu: it states that the source is
+ * readable, it does not sell it. Faint at rest, resolves on hover. */
+.cc-brand-ver {
+  margin-left: auto;
+  padding-left: 0.6em;
+  font: 10px var(--cc-mono, monospace);
+  letter-spacing: 0;
+  color: var(--cc-text-faint);
+  text-decoration: none;
+  flex: none;
+  white-space: nowrap;
+  transition: color 0.13s;
+}
+.cc-brand-ver:hover {
+  color: var(--cc-text-muted);
+  text-decoration: underline;
+}
+.cc-brand-ver:focus-visible {
+  outline: 2px solid var(--cc-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Gear masthead — the menu's only header. Sits above the first zone. */
+.cc-gear-masthead {
+  display: flex;
+  align-items: center;
+  padding: 2px 2px 10px;
+  font-size: 15px;
+}
+/* .cc-brand is inline-flex (it shrink-wraps by default), so it has to stretch
+   here or the version's margin-left:auto has nothing to push against. */
+.cc-gear-masthead .cc-brand {
+  flex: 1;
+}
+
+/* Outline panel header — the lockup replaces what used to be the bare word
+   "Clenby". Slightly smaller than the masthead: this strip is compact and the
+   grip and re-index button share the row. */
+.cc-outline-title .cc-brand {
+  font-size: 13px;
 }
 
 /* Key chips — every place Clenby prints a keystroke (@/ui/kbd.ts). Derived

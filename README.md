@@ -1,5 +1,7 @@
 # Clenby
 
+[clenby.dev](https://clenby.dev)
+
 A browser extension for claude.ai. Chrome is the tested target; a Firefox build exists but hasn't been fully verified yet (see ROADMAP.md). It adds an outline navigator, themes, a command palette, code and table tools, trust checks, output repair, and a self-healing layer that keeps selectors working when claude.ai changes its markup. claude.ai is the first target; the long-term plan is to support other AI chat apps too.
 
 Everything runs locally in your browser. No servers, no accounts, no analytics.

@@ -17,6 +17,7 @@
 
 import type { FeatureContext } from "@/core/feature";
 import { ownedEl, setGeometry } from "@/ui/root";
+import { brandLockup } from "@/ui/brand";
 
 export const PANEL_ID = "cc-panel";
 
@@ -59,7 +60,11 @@ export function buildPanel(owner: string): PanelRefs {
     text: "⠿",
     attrs: { "aria-hidden": "true" },
   });
-  const title = ownedEl("span", { owner, className: "cc-outline-title", text: "Clenby" });
+  // The lockup, not a bare word: this header is the panel's identity strip and
+  // it is the surface a user sees most. Same helper as the gear masthead, so
+  // the two can never drift.
+  const title = ownedEl("span", { owner, className: "cc-outline-title" });
+  title.appendChild(brandLockup({ owner }));
   const reindexBtn = ownedEl("button", {
     owner,
     className: "cc-reindex",

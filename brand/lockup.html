@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clenby — wordmark lockup</title>
+<style>
+  :root{ --indigo:#4F46E5; --ink:#16181d; --muted:#6b7280; --faint:#9aa1ab;
+         --line:#e3e5e9; --paper:#fbfbfc; }
+  *{box-sizing:border-box}
+  body{margin:0;padding:40px 32px 80px;background:var(--paper);color:var(--ink);
+       font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Noto Sans",sans-serif}
+  header{max-width:1100px;margin:0 auto 30px}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--muted);max-width:66ch;margin:0}
+  .wrap{max-width:1100px;margin:0 auto;display:grid;gap:18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px 26px}
+  .card.dk{background:#141519;border-color:#26282e}
+  .card h2{font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+           color:var(--muted);margin:0 0 4px;font-weight:600}
+  .card .note{font-size:12.5px;color:var(--muted);margin:0 0 20px}
+  .dk h2,.dk .note{color:#8b919b}
+
+  /* ---- the lockup itself ---- */
+  .lk{display:inline-flex;align-items:center;gap:.42em;font-size:44px}
+  .lk svg{width:1.09em;height:1.09em;display:block;flex:none}
+  .lk .wm{font-weight:640;letter-spacing:-.031em;line-height:1;color:var(--ink)}
+  .dk .lk .wm{color:#f2f3f5}
+
+  .lk.sm{font-size:24px} .lk.xs{font-size:17px}
+  .stack{display:inline-flex;flex-direction:column;align-items:center;gap:.30em;font-size:44px}
+  .stack svg{width:1.55em;height:1.55em;display:block}
+  .stack .wm{font-weight:640;letter-spacing:-.031em;line-height:1}
+
+  .mono .wm{font-family:"Noto Sans Mono","Adwaita Mono",ui-monospace,monospace;
+            font-weight:600;letter-spacing:-.02em}
+  .light .wm{font-weight:400;letter-spacing:.01em}
+  .caps .wm{font-weight:660;letter-spacing:.02em}
+
+  .tag{display:flex;flex-direction:column;gap:.18em}
+  .tag .t{font-size:.30em;font-weight:450;letter-spacing:.005em;color:var(--muted);line-height:1.3}
+  .dk .tag .t{color:#8b919b}
+
+  .row{display:flex;align-items:center;gap:54px;flex-wrap:wrap}
+  .cs{position:relative;display:inline-block;padding:26px;outline:1px dashed #c9ccd2;border-radius:8px}
+  .cs::after{content:"clear space = the mark’s corner radius × 2";position:absolute;left:0;top:-18px;
+             font-size:10.5px;color:var(--faint)}
+  code{background:#f1f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Clenby — wordmark lockup</h1>
+  <p class="sub">Two decisions, kept separate. <strong>Structure</strong> — how mark and word sit together — is what to pick now. <strong>Typeface</strong> comes after; these render in the system sans, and the shipped logo should be set in a chosen face and converted to outlines so it can’t reflow on someone else’s machine.</p>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>1 · Horizontal — the primary</h2>
+    <p class="note">Mark at 1.09× the cap height so it optically matches the lowercase; gap 0.42em; tracking −0.031em to close the wide default spacing. This is the one that goes in the site header and the store banner.</p>
+    <div class="row">
+      <span class="lk">
+        <svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg>
+        <span class="wm">clenby</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Scaling — 44 / 24 / 17px</h2>
+    <p class="note">The whole lockup is em-based, so it scales as one object. Below ~15px the chevron closes up; that’s the floor for the horizontal lockup.</p>
+    <div class="row">
+      <span class="lk"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+      <span class="lk sm"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+      <span class="lk xs"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+    </div>
+  </div>
+
+  <div class="card dk">
+    <h2>3 · Reversed</h2>
+    <p class="note">The mark keeps its indigo tile on dark — it does not go white. The tile is the constant; only the wordmark flips.</p>
+    <div class="row">
+      <span class="lk"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+      <span class="lk sm"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>4 · Stacked</h2>
+    <p class="note">For square slots — the store listing tile, an avatar, an OG image. Mark at 1.55em so the word doesn’t dominate.</p>
+    <div class="row">
+      <span class="stack">
+        <svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg>
+        <span class="wm">clenby</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>5 · With tagline</h2>
+    <p class="note">Tagline at 0.30em of the lockup size, baseline-aligned under the wordmark. Use only at 32px and above.</p>
+    <div class="row">
+      <span class="lk">
+        <svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg>
+        <span class="tag"><span class="wm">clenby</span><span class="t">a companion for claude.ai</span></span>
+      </span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>6 · Typeface options <span style="color:#9aa1ab;font-weight:400;text-transform:none;letter-spacing:0">— same structure, three voices</span></h2>
+    <p class="note">Semibold (default) reads as product. Light reads as editorial. Mono reads as developer tool — arguably the truest to what Clenby is, and it pairs with the terminal styling already in the gear menu.</p>
+    <div class="row">
+      <span class="lk sm"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+      <span class="lk sm light"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+      <span class="lk sm mono"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+      <span class="lk sm caps"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">Clenby</span></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>7 · Clear space & minimum size</h2>
+    <p class="note">Keep a margin equal to twice the mark’s corner radius on all four sides. Minimum horizontal lockup: <code>17px</code> tall. Below that use the mark alone.</p>
+    <div class="row">
+      <span class="cs">
+        <span class="lk sm"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4F46E5"/><g transform="translate(3 0)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M42.93 18.98 A17 17 0 1 0 42.93 45.02" stroke-width="8"/><path d="M29.5 27 L34.5 32 L29.5 37" stroke-width="4.6"/></g></svg><span class="wm">clenby</span></span>
+      </span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

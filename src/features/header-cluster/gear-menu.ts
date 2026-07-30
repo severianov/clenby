@@ -39,6 +39,7 @@ import type { FeatureContext } from "@/core/feature";
 import type { CompanionSettings } from "@/core/storage";
 import { ownedEl } from "@/ui/root";
 import { kbdSet } from "@/ui/kbd";
+import { brandLockup } from "@/ui/brand";
 import {
   ariaKeyShortcuts,
   chordOf,
@@ -60,6 +61,9 @@ const BRIDGE_AUDIT_CMD = "npx clenby-bridge@latest audit";
 const BRIDGE_ROTATE_CMD = "npx clenby-bridge@latest --rotate-token";
 const BRIDGE_REMOVE_TOKEN_CMD = "npx clenby-bridge@latest remove-token";
 const BRIDGE_REMOVE_MCP_CMD = "claude mcp remove clenby";
+
+/** The public repository. Linked from the masthead — see the comment there. */
+const REPO_URL = "https://github.com/severianov/clenby";
 
 const OWNER = "header-cluster";
 
@@ -234,6 +238,33 @@ const TOGGLE_GROUPS: ReadonlyArray<{
  *  the header cluster; all listeners/subscriptions ride the cluster's ctx. */
 export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   const root = ownedEl("div", { owner: OWNER, className: "cc-gear" });
+
+  // Masthead — the menu had no header at all, opening straight into
+  // "Appearance". This is the settings surface, so it is the one place the
+  // product should say its own name. The version rides along because it was
+  // previously visible NOWHERE in the UI: every bug report asks for it, and
+  // the selector-health report already embeds it, so a user should be able to
+  // read it without opening a panel.
+  const masthead = ownedEl("div", { owner: OWNER, className: "cc-gear-masthead" });
+  // "version · MIT", linked to the repo. STATED, not promoted: this is the
+  // surface where someone is already deciding whether to trust an extension
+  // that holds host permissions on claude.ai, and "you can read the code" is
+  // the only answer to that which is checkable. Deliberately one quiet line —
+  // the sponsor slot already rotates a "star us" message, and a second surface
+  // repeating it would read as pleading. No banner, nothing dismissible.
+  const srcLink = ownedEl("a", {
+    owner: OWNER,
+    className: "cc-brand-ver",
+    text: `${browser.runtime.getManifest().version} · MIT`,
+    attrs: {
+      href: REPO_URL,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      title: "Clenby is open source — read the code on GitHub",
+    },
+  });
+  masthead.append(brandLockup({ owner: OWNER }), srcLink);
+  root.appendChild(masthead);
 
   /** A zone card with its mono eyebrow (the only "title" the menu has). */
   const zone = (eyebrow: string): HTMLDivElement => {
@@ -654,6 +685,11 @@ export function buildGearMenu(ctx: FeatureContext): HTMLElement {
   advancedBlock.append(
     commentLine("# check what the bridge runs"),
     cmdLine(BRIDGE_AUDIT_CMD),
+    // The most nervous moment in the product is being asked to run a local
+    // server and paste a token. Answer it here, where it occurs, with facts
+    // that are checkable rather than reassurance.
+    commentLine("# MIT · a few hundred readable lines · published by a public"),
+    commentLine("# GitHub Action, so npm can attest which commit built it"),
     spacer(),
     commentLine("# rotate the pairing token"),
     cmdLine(BRIDGE_ROTATE_CMD),
